@@ -232,10 +232,21 @@
 #define MSG_FOLLOW_CALIBRATION_FLOW                             "Drukarka nie zostala jeszcze skalibrowana. Prosze kierowac sie instrukcja, rozdzial Zaczynamy, podrozdzial Selftest."
 #define MSG_BABYSTEP_Z_NOT_SET                                  "Odleglosc dyszy od podkladki nie jest skalibrowana. Postepuj zgodnie z instrukcja rozdzial Zaczynamy, podrozdzial Kalibracja pierwszej warstwy."
 #define MSG_BED_CORRECTION_MENU                                 "Korekta podkladki"
-#define MSG_BED_CORRECTION_LEFT                                 "W lewo  [um]"
-#define MSG_BED_CORRECTION_RIGHT                                "W prawo [um]"
-#define MSG_BED_CORRECTION_FRONT                                "Do przodu [um]"
-#define MSG_BED_CORRECTION_REAR                                 "Do tylu  [um]"
+#ifdef MBC_8POINT
+#define MSG_BED_CORRECTION_P1		"Punkt a [um]"
+#define MSG_BED_CORRECTION_P2		"Punkt b [um]"
+#define MSG_BED_CORRECTION_P3		"Punkt c [um]"
+#define MSG_BED_CORRECTION_P4		"Punkt d [um]"
+#define MSG_BED_CORRECTION_P5		"Punkt e [um]"
+#define MSG_BED_CORRECTION_P6		"Punkt f [um]"
+#define MSG_BED_CORRECTION_P7		"Punkt g [um]"
+#define MSG_BED_CORRECTION_P8		"Punkt h [um]"
+#else
+//#define MSG_BED_CORRECTION_LEFT                                 "W lewo  [um]"
+//#define MSG_BED_CORRECTION_RIGHT                                "W prawo [um]"
+//#define MSG_BED_CORRECTION_FRONT                                "Do przodu [um]"
+//#define MSG_BED_CORRECTION_REAR                                 "Do tylu  [um]"
+#endif
 #define MSG_BED_CORRECTION_RESET                                "Reset"
 
 #define MSG_MESH_BED_LEVELING									"Mesh Bed Leveling"
@@ -338,3 +349,4 @@
 #define MSG_FILE_CNT						"Niektore pliki nie beda sortowane. Max. ilosc plikow do sortu w 1 folderze to 100."
 #define MSG_WIZARD_HEATING					"Nagrzewanie dyszy. Prosze czekac."
 #define MSG_M117_V2_CALIBRATION				"M117 Kal. 1. warstwy"
+

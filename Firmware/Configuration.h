@@ -12,6 +12,9 @@
 
 #include "eeprom.h"
 
+// Enable this for M767/M768 dump & restore EEPROM
+#define EEPROM_SAVE_RESTORE
+
 // This configuration file contains the basic settings.
 // Advanced settings can be found in Configuration_adv.h
 // BASIC SETTINGS: select your board type, temperature sensor type, axis scaling, and endstop configuration

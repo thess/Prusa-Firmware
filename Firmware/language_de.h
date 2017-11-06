@@ -92,6 +92,7 @@
 
 #define MSG_SILENT_MODE_ON					"Mode     [leise]"
 #define MSG_SILENT_MODE_OFF					"Mode [Hohe Leist]"
+#define MSG_AUTO_MODE_ON					"Mode [Auto]"
 #define(length = 20) MSG_REBOOT				"Zum Uebernehmen "
 #define(length = 22) MSG_TAKE_EFFECT			"Drucker neu starten"
 
@@ -210,7 +211,6 @@
 #define(length = 60) MSG_MEASURE_BED_REFERENCE_HEIGHT_LINE1	"Messen der Referenzhoehe des Kalibrierpunktes"
 #define(length = 14) MSG_MEASURE_BED_REFERENCE_HEIGHT_LINE2	" von 9"
 
->>>>>>> Add optional 8-point Mesh Bed Correction offsets + LCD and translations support
 #define MSG_FIND_BED_OFFSET_AND_SKEW_ITERATION	"Iteration "
 
 #define(length = 20, lines = 8) MSG_BED_SKEW_OFFSET_DETECTION_POINT_NOT_FOUND			"XYZ-Kalibrierung fehlgeschlagen. Bed-Kalibrierpunkt nicht gefunden."

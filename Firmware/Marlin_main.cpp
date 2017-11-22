@@ -2340,7 +2340,7 @@ void gcode_M701() {
 	current_position[E_AXIS] += 70;
 	plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 400 / 60, active_extruder); //fast sequence
 
-	current_position[E_AXIS] += 25;
+	current_position[E_AXIS] += 50;
 	plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 100 / 60, active_extruder); //slow sequence
 	st_synchronize();
 

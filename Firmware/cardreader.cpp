@@ -92,10 +92,10 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
 			strcat(path, lfilename); // FILENAME_LENGTH-1 characters maximum
 			strcat(path, "/");       // 1 character
 
-									 // Serial.print(path);
+			// Serial.print(path);
 
-									 // Get a new directory object using the full path
-									 // and dive recursively into it.
+			// Get a new directory object using the full path
+			// and dive recursively into it.
 			SdFile dir;
 			if (!dir.open(parent, lfilename, O_READ)) {
 				if (lsAction == LS_SerialPrint) {
@@ -159,9 +159,6 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
 void CardReader::ls() 
 {
   lsAction=LS_SerialPrint;
- // if(lsAction==LS_Count)
- // nrFiles=0;
-
   root.rewind();
   lsDive("",root);
 }
@@ -452,7 +449,7 @@ void CardReader::removeFile(char* name)
         SERIAL_ECHOLN(subdirname);
         if(!myDir.open(curDir,subdirname,O_READ))
         {
-          SERIAL_PROTOCOLRPGM("open failed, File: ");
+          SERIAL_PROTOCOLRPGM(MSG_SD_OPEN_FILE_FAIL);
           SERIAL_PROTOCOL(subdirname);
           SERIAL_PROTOCOLLNPGM(".");
           return;

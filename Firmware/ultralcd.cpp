@@ -6333,6 +6333,11 @@ void lcd_setcontrast(uint8_t value)
 /* Warning: This function is called from interrupt context */
 void lcd_buttons_update()
 {
+  // Avoid re-entrancy from temperature interrups
+ static bool in_buttons_update = false;
+ if (in_buttons_update) return;
+ in_buttons_update = true;
+
 #ifdef NEWPANEL
   uint8_t newbutton = 0;
   if (READ(BTN_EN1) == 0)  newbutton |= EN_A;
@@ -6457,6 +6462,7 @@ void lcd_buttons_update()
     }
   }
   lastEncoderBits = enc;
+  in_buttons_update = false;
 }
 
 bool lcd_detected(void)

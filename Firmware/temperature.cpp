@@ -1006,7 +1006,7 @@ void tp_init()
   // Use timer0 for temperature measurement
   // Interleave temperature interrupt with millies interrupt
   OCR0B = 128;
-  TIMSK0 |= (1<<OCIE0B);  
+  sbi(TIMSK0, OCIE0B);  
   
   // Wait for temperature measurement to settle
   delay(250);
@@ -1457,10 +1457,20 @@ int read_max6675()
 }
 #endif
 
+volatile bool in_temp_isr = false;
 
 // Timer 0 is shared with millies
 ISR(TIMER0_COMPB_vect)
 {
+  // The stepper ISR can interrupt this ISR. When it does it re-enables this ISR
+  // at the end of its run, potentially causing re-entry. This flag prevents it.
+  if (in_temp_isr) return;
+  in_temp_isr = true;
+
+  // Allow UART and stepper ISRs
+  DISABLE_TEMPERATURE_INTERRUPT(); //Disable Temperature ISR
+  sei();
+
   //these variables are only accesible from the ISR, but static, so they don't lose their value
   static unsigned char temp_count = 0;
   static unsigned long raw_temp_0_value = 0;
@@ -1777,6 +1787,12 @@ ISR(TIMER0_COMPB_vect)
   
 #endif //ifndef SLOW_PWM_HEATERS
   
+  //
+  // Update lcd buttons 488 times per second
+  //
+  static bool do_buttons;
+  if ((do_buttons ^= true)) lcd_buttons_update();
+
   switch(temp_state) {
     case 0: // Prepare TEMP_0
       #if defined(TEMP_0_PIN) && (TEMP_0_PIN > -1)
@@ -1788,7 +1804,6 @@ ISR(TIMER0_COMPB_vect)
         ADMUX = ((1 << REFS0) | (TEMP_0_PIN & 0x07));
         ADCSRA |= 1<<ADSC; // Start conversion
       #endif
-      lcd_buttons_update();
       temp_state = 1;
       break;
     case 1: // Measure TEMP_0
@@ -1810,7 +1825,6 @@ ISR(TIMER0_COMPB_vect)
         ADMUX = ((1 << REFS0) | (TEMP_BED_PIN & 0x07));
         ADCSRA |= 1<<ADSC; // Start conversion
       #endif
-      lcd_buttons_update();
       temp_state = 3;
       break;
     case 3: // Measure TEMP_BED
@@ -1829,7 +1843,6 @@ ISR(TIMER0_COMPB_vect)
         ADMUX = ((1 << REFS0) | (TEMP_1_PIN & 0x07));
         ADCSRA |= 1<<ADSC; // Start conversion
       #endif
-      lcd_buttons_update();
       temp_state = 5;
       break;
     case 5: // Measure TEMP_1
@@ -1848,7 +1861,6 @@ ISR(TIMER0_COMPB_vect)
         ADMUX = ((1 << REFS0) | (TEMP_2_PIN & 0x07));
         ADCSRA |= 1<<ADSC; // Start conversion
       #endif
-      lcd_buttons_update();
       temp_state = 7;
       break;
     case 7: // Measure TEMP_2
@@ -1868,7 +1880,6 @@ ISR(TIMER0_COMPB_vect)
       ADMUX = ((1 << REFS0) | (FILWIDTH_PIN & 0x07)); 
       ADCSRA |= 1<<ADSC; // Start conversion 
      #endif 
-     lcd_buttons_update();       
      temp_state = 9; 
      break; 
     case 9:   //Measure FILWIDTH 
@@ -2017,6 +2028,10 @@ ISR(TIMER0_COMPB_vect)
     }
   }
 #endif //BABYSTEPPING
+
+  cli();
+  in_temp_isr = false;
+  ENABLE_TEMPERATURE_INTERRUPT(); //re-enable Temperature ISR
 }
 
 #ifdef PIDTEMP

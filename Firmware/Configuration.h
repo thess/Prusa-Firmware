@@ -10,7 +10,7 @@
 
 // Firmware version
 #define FW_version "3.2.3"
-#define FW_local_variant 7
+#define FW_local_variant 8
 #define FW_report_version FW_version " r" STR(FW_local_variant)
 
 #define FW_PRUSA3D_MAGIC "PRUSA3DFW"

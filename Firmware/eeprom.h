@@ -173,6 +173,14 @@
 #define EEPROM_TMC_X_SG_THRS_LOW     (EEPROM_TMC_X + 13) // 1byte, (-64..+63)
 #define EEPROM_TMC_X_SG_THRS_HIGH    (EEPROM_TMC_X + 14) // 1byte, (-64..+63)
 
+// E^2 address of custom MBC offsets array.
+// Correction of the bed leveling, in micrometers.
+// Current Range is: +/- 500um (stored as int16).
+#define EEPROM_BED_CORRECTION_VALID	499
+#define EEPROM_BED_CORRECTION_OFFSETS	(EEPROM_BED_CORRECTION_VALID - 16)
+#define EEPROM_XY_CALIBRATION_RESULT	(EEPROM_BED_CORRECTION_OFFSETS - 1)
+#define EEPROM_XY_SKEW_DISABLED		(EEPROM_XY_CALIBRATION_RESULT - 1)
+
 // Currently running firmware, each digit stored as uint16_t.
 // The flavor differentiates a dev, alpha, beta, release candidate or a release version.
 #define EEPROM_FIRMWARE_VERSION_END       (FW_PRUSA3D_MAGIC_LEN+8)

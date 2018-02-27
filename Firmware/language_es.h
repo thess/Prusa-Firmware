@@ -345,12 +345,7 @@
 #define MSG_PLEASE_LOAD_PLA					"Carga el filamento PLA primero por favor."
 #define MSG_FILE_CNT						"Algunos archivos no seran ordenados. El Max. num. de archivos para ordenar en 1 carpeta es 100."
 #define MSG_WIZARD_HEATING					"Precalentando nozzle. Espera por favor."
-<<<<<<< HEAD
 #define MSG_M117_V2_CALIBRATION				"M117 Cal. primera cap."
-<<<<<<< HEAD
-=======
->>>>>>> Add optional 8-point Mesh Bed Correction offsets + LCD and translations support
-=======
+
 #define MSG_SKEW_CORRECTION_ON			"XY Corr. [ON]"
 #define MSG_SKEW_CORRECTION_OFF			"XY Corr. [OFF]"
->>>>>>> Add Calibration LCD menu item for optionallly disabling XY skew correction.

@@ -352,9 +352,6 @@
 #define MSG_FILE_CNT						"Nektere soubory nebudou setrideny. Maximalni pocet souboru pro setrideni je 100."
 #define MSG_WIZARD_HEATING					"Predehrivam trysku. Prosim cekejte."
 #define MSG_M117_V2_CALIBRATION				"M117 Kal. prvni vrstvy"
-<<<<<<< HEAD
 
-=======
 #define MSG_SKEW_CORRECTION_ON			"XY Korekce [ON]"
 #define MSG_SKEW_CORRECTION_OFF			"XY Korekce [OFF]"
->>>>>>> Add Calibration LCD menu item for optionallly disabling XY skew correction.

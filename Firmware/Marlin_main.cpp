@@ -33,14 +33,15 @@
 #include "temperature.h"
 #include "motion_control.h"
 #include "cardreader.h"
-#include "watchdog.h"
 #include "ConfigurationStore.h"
 #include "language.h"
 #include "pins_arduino.h"
 #include "math.h"
 #include "util.h"
 
+#ifdef WATCHDOG
 #include <avr/wdt.h>
+#endif
 
 #ifdef BLINKM
 #include "BlinkM.h"
@@ -1104,7 +1105,6 @@ void setup()
 	SdFatUtil::set_stack_guard(); //writes magic number at the end of static variables to protect against overwriting static memory by stack
 	tp_init();    // Initialize temperature loop
 	plan_init();  // Initialize planner;
-	watchdog_init();
 	st_init();    // Initialize stepper, this enables interrupts!
 	setup_photpin();
 	servo_init();
@@ -1284,6 +1284,9 @@ if((eSoundMode==e_SOUND_MODE_LOUD)||(eSoundMode==e_SOUND_MODE_ONCE))
   // so the next time the firmware gets updated, it will know from which version it has been updated.
   update_current_firmware_version_to_eeprom();
   KEEPALIVE_STATE(NOT_BUSY);
+#ifdef WATCHDOG
+  wdt_enable(WDTO_4S);
+#endif
 }
 
 void trace();
@@ -6618,9 +6621,12 @@ void kill(const char *full_screen_message)
 #endif
   suicide();
   // Wait for reset
-  while(1) {
-    // nice doggie
-    watchdog_reset();
+  while(1) { 
+#ifdef WATCHDOG
+      // nice doggie
+      wdt_reset();
+#endif
+      _delay_ms(20);
   }
 }
 

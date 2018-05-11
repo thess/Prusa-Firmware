@@ -7,8 +7,8 @@
 #define STR(x) STR_HELPER(x)
 
 // Firmware version
-#define FW_VERSION "3.1.3"
-#define FW_COMMIT_NR   245
+#define FW_VERSION "3.2.0"
+#define FW_COMMIT_NR   555
 // FW_VERSION_UNKNOWN means this is an unofficial build.
 // The firmware should only be checked into github with this symbol.
 #define FW_DEV_VERSION FW_VERSION_GOLD
@@ -132,7 +132,6 @@
 // Power loss errors (total)
 #define EEPROM_POWER_COUNT_TOT       (EEPROM_FERROR_COUNT_TOT - 2)             // uint16
 
-
 ////////////////////////////////////////
 // TMC2130 Accurate sensorless homing 
 
@@ -155,7 +154,7 @@
 ////////////////////////////////////////
 // TMC2130 uStep linearity correction
 
-// Linearity correction factor (XYZE) encoded as uint8 (0=>1, 1=>1.001, 254=>1.254, 255=>clear eeprom/disabled)
+// Linearity correction factor (XYZE)
 #define EEPROM_TMC2130_WAVE_X_FAC              (EEPROM_TMC2130_HOME_ENABLED - 1)               // uint8
 #define EEPROM_TMC2130_WAVE_Y_FAC              (EEPROM_TMC2130_WAVE_X_FAC - 1)                 // uint8
 #define EEPROM_TMC2130_WAVE_Z_FAC              (EEPROM_TMC2130_WAVE_Y_FAC - 1)                 // uint8
@@ -170,8 +169,10 @@
 #define EEPROM_TMC2130_Z_MRES              (EEPROM_TMC2130_Y_MRES - 1)                         // uint8
 #define EEPROM_TMC2130_E_MRES              (EEPROM_TMC2130_Z_MRES - 1)                         // uint8
 
+#define EEPROM_PRINTER_TYPE          (EEPROM_TMC2130_E_MRES - 2)                               // uint16
+#define EEPROM_BOARD_TYPE            (EEPROM_PRINTER_TYPE - 2)                                 // uint16
 // Hyperfine Bed Tuning
-#define EEPROM_BED_CORRECTION_FRONT_LEFT (EEPROM_TMC2130_E_MRES - 1)
+#define EEPROM_BED_CORRECTION_FRONT_LEFT (EEPROM_BOARD_TYPE - 1)
 #define EEPROM_BED_CORRECTION_FRONT_RIGHT (EEPROM_BED_CORRECTION_FRONT_LEFT - 1)
 #define EEPROM_BED_CORRECTION_REAR_RIGHT (EEPROM_BED_CORRECTION_FRONT_RIGHT - 1)
 #define EEPROM_BED_CORRECTION_REAR_LEFT (EEPROM_BED_CORRECTION_REAR_RIGHT - 1)
@@ -223,8 +224,8 @@
 //#define STRING_VERSION "1.0.2"
 
 #define STRING_VERSION_CONFIG_H __DATE__ " " __TIME__ // build date and time
-#define STRING_CONFIG_H_AUTHOR "(3d-gussner,HP)" // Who made the changes.
-// H = Hyperfine ; P = P.I.N.D.A.v2 fix by TheZeroBeast
+#define STRING_CONFIG_H_AUTHOR "(3d-gussner,H)" // Who made the changes.
+// H = Hyperfine 
 
 // SERIAL_PORT selects which serial port should be used for communication with the host.
 // This allows the connection of wireless adapters (for instance) to non-default port pins.
@@ -425,12 +426,6 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 #define DISABLE_E false // For all extruders
 #define DISABLE_INACTIVE_EXTRUDER true //disable only inactive extruders and keep active extruder enabled
 
-#define INVERT_X_DIR true    // for Mendel set to false, for Orca set to true
-#define INVERT_Y_DIR false    // for Mendel set to true, for Orca set to false
-#define INVERT_Z_DIR true     // for Mendel set to false, for Orca set to true
-#define INVERT_E0_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
-#define INVERT_E1_DIR false    // for direct drive extruder v9 set to true, for geared extruder set to false
-#define INVERT_E2_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
 
 // ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN
@@ -625,7 +620,6 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 
 //LCD and SD support
 #define ULTRA_LCD  //general LCD support, also 16x2
-//#define DOGLCD  // Support for SPI LCD 128x64 (Controller ST7565R graphic Display Family)
 #define SDSUPPORT // Enable SD Card Support in Hardware Console
 //#define SDSLOW // Use slower SD transfer mode (not normally needed - uncomment if you're getting volume init error)
 #define SD_CHECK_AND_RETRY // Use CRC checks and retries on the SD communication
@@ -648,12 +642,6 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 // http://reprap.org/wiki/RAMPS_1.3/1.4_GADGETS3D_Shield_with_Panel
 //#define G3D_PANEL
 
-// The RepRapDiscount FULL GRAPHIC Smart Controller (quadratic white PCB)
-// http://reprap.org/wiki/RepRapDiscount_Full_Graphic_Smart_Controller
-//
-// ==> REMEMBER TO INSTALL U8glib to your ARDUINO library folder: http://code.google.com/p/u8glib/wiki/u8glib
-//#define REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER
-
 // The RepRapWorld REPRAPWORLD_KEYPAD v1.1
 // http://reprapworld.com/?products_details&products_id=202&cPath=1591_1626
 //#define REPRAPWORLD_KEYPAD
@@ -666,17 +654,10 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 
 //automatic expansion
 #if defined (MAKRPANEL)
- #define DOGLCD
  #define SDSUPPORT
  #define ULTIPANEL
  #define NEWPANEL
  #define DEFAULT_LCD_CONTRAST 17
-#endif
-
-#if defined (REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER)
- #define DOGLCD
- #define U8GLIB_ST7920
- #define REPRAP_DISCOUNT_SMART_CONTROLLER
 #endif
 
 #if defined(ULTIMAKERCONTROLLER) || defined(REPRAP_DISCOUNT_SMART_CONTROLLER) || defined(G3D_PANEL)
@@ -699,7 +680,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 
 //#define LCD_I2C_SAINSMART_YWROBOT
 #ifdef LCD_I2C_SAINSMART_YWROBOT
-  // This uses the LiquidCrystal_I2C library ( https://bitbucket.org/fmalpartida/new-liquidcrystal/wiki/Home )
+  // This uses the LiquidCrystal_I2C library ( https://bitbucket.org/fmalpartida/new-LiquidCrystal_Prusa/wiki/Home )
   // Make sure it is placed in the Arduino libraries directory.
   #define LCD_I2C_TYPE_PCF8575
   #define LCD_I2C_ADDRESS 0x27   // I2C Address of the port expander
@@ -754,7 +735,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 // Shift register panels
 // ---------------------
 // 2 wire Non-latching LCD SR from:
-// https://bitbucket.org/fmalpartida/new-liquidcrystal/wiki/schematics#!shiftregister-connection 
+// https://bitbucket.org/fmalpartida/new-LiquidCrystal_Prusa/wiki/schematics#!shiftregister-connection 
 
 //#define SAV_3DLCD
 #ifdef SAV_3DLCD
@@ -787,12 +768,6 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
   #endif
 #endif
 
-// default LCD contrast for dogm-like LCD displays
-#ifdef DOGLCD
-# ifndef DEFAULT_LCD_CONTRAST
-#  define DEFAULT_LCD_CONTRAST 32
-# endif
-#endif
 
 // Increase the FAN pwm frequency. Removes the PWM noise but increases heating in the FET/Arduino
 //#define FAST_PWM_FAN
@@ -867,8 +842,5 @@ enum CalibrationStatus
 #include "Configuration_adv.h"
 #include "thermistortables.h"
 
-#define PINDA_THERMISTOR
-
-#define AMBIENT_THERMISTOR
 
 #endif //__CONFIGURATION_H

@@ -353,18 +353,18 @@ void dcode_8()
 			if (i > 0) offs = eeprom_read_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + (i - 1));
 			float foffs = ((float)offs) / axis_steps_per_unit[Z_AXIS];
 			offs = 1000 * foffs;
-			printf_P(PSTR("temp_pinda=%dC temp_shift=%dum\n"), 35 + i * 7, offs);
+			printf_P(PSTR("temp_pinda=%dC temp_shift=%dum\n"), 35 + i * 5, offs);
 		}
 	}
 	else if (strchr_pointer[1+1] == '!')
 	{
 		cal_status = 1;
 		eeprom_write_byte((uint8_t*)EEPROM_CALIBRATION_STATUS_PINDA, cal_status);
-		eeprom_write_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + 0,   8); //42C -  20um -   8usteps
-		eeprom_write_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + 1,  24); //49C -  60um -  24usteps
-		eeprom_write_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + 2,  48); //56C - 120um -  48usteps
-		eeprom_write_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + 3,  80); //63C - 200um -  80usteps
-		eeprom_write_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + 4, 120); //70C - 300um - 120usteps
+		eeprom_write_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + 0,   8); //40C -  20um -   8usteps
+		eeprom_write_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + 1,  24); //45C -  60um -  24usteps
+		eeprom_write_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + 2,  48); //50C - 120um -  48usteps
+		eeprom_write_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + 3,  80); //55C - 200um -  80usteps
+		eeprom_write_word(((uint16_t*)EEPROM_PROBE_TEMP_SHIFT) + 4, 120); //60C - 300um - 120usteps
 	}
 	else
 	{
@@ -397,9 +397,19 @@ const char* dcode_9_ADC_name(uint8_t i)
 extern int current_temperature_raw[EXTRUDERS];
 extern int current_temperature_bed_raw;
 extern int current_temperature_raw_pinda;
+
+#ifdef AMBIENT_THERMISTOR
 extern int current_temperature_raw_ambient;
+#endif //AMBIENT_THERMISTOR
+
+#ifdef VOLT_PWR_PIN
 extern int current_voltage_raw_pwr;
+#endif //VOLT_PWR_PIN
+
+#ifdef VOLT_BED_PIN
 extern int current_voltage_raw_bed;
+#endif //VOLT_BED_PIN
+
 uint16_t dcode_9_ADC_val(uint8_t i)
 {
 	switch (i)
@@ -408,9 +418,15 @@ uint16_t dcode_9_ADC_val(uint8_t i)
 	case 1: return 0;
 	case 2: return current_temperature_bed_raw;
 	case 3: return current_temperature_raw_pinda;
+#ifdef VOLT_PWR_PIN
 	case 4: return current_voltage_raw_pwr;
+#endif //VOLT_PWR_PIN
+#ifdef AMBIENT_THERMISTOR
 	case 5: return current_temperature_raw_ambient;
+#endif //AMBIENT_THERMISTOR
+#ifdef VOLT_BED_PIN
 	case 6: return current_voltage_raw_bed;
+#endif //VOLT_BED_PIN
 	}
 	return 0;
 }
@@ -449,13 +465,46 @@ void dcode_10()
 void dcode_12()
 {//Time
 	LOG("D12 - Time\n");
+
 }
 
-#include "tmc2130.h"
-#include "Marlin.h"
-#include "planner.h"
-extern void st_synchronize();
 
+#ifdef TMC2130
+#include "planner.h"
+#include "tmc2130.h"
+extern void st_synchronize();
+/**
+ * @brief D2130 Trinamic stepper controller
+ * D2130<axis><command>[subcommand][value]
+ *  * Axis
+ *  * * 'X'
+ *  * * 'Y'
+ *  * * 'Z'
+ *  * * 'E'
+ *  * command
+ *  * * '0' current off
+ *  * * '1' current on
+ *  * * '+' single step
+ *  * * * value sereval steps
+ *  * * '-' dtto oposite direction
+ *  * * '?' read register
+ *  * * * "mres"
+ *  * * * "step"
+ *  * * * "mscnt"
+ *  * * * "mscuract"
+ *  * * * "wave"
+ *  * * '!' set register
+ *  * * * "mres"
+ *  * * * "step"
+ *  * * * "wave"
+ *  * * * *0, 180..250 meaning: off, 0.9..1.25, recommended value is 1.1
+ *  * * '@' home calibrate axis
+ *
+ *  Example:
+ *  D2130E?wave //print extruder microstep linearity compensation curve
+ *  D2130E!wave0 //disable extruder linearity compensation curve, (sine curve is used)
+ *  D2130E!wave220 // (sin(x))^1.1 extruder microstep compensation curve used
+ */
 void dcode_2130()
 {
 	printf_P(PSTR("D2130 - TMC2130\n"));
@@ -542,11 +591,11 @@ void dcode_2130()
 			}
 			else if (strncmp(strchr_pointer + 7, "wave", 4) == 0)
 			{
-				uint8_t fac200 = atoi(strchr_pointer + 11) & 0xff;
-				if (fac200 < TMC2130_WAVE_FAC200_MIN) fac200 = 0;
-				if (fac200 > TMC2130_WAVE_FAC200_MAX) fac200 = TMC2130_WAVE_FAC200_MAX;
-				tmc2130_set_wave(axis, 247, fac200);
-				tmc2130_wave_fac[axis] = fac200;
+				uint8_t fac1000 = atoi(strchr_pointer + 11) & 0xffff;
+				if (fac1000 < TMC2130_WAVE_FAC1000_MIN) fac1000 = 0;
+				if (fac1000 > TMC2130_WAVE_FAC1000_MAX) fac1000 = TMC2130_WAVE_FAC1000_MAX;
+				tmc2130_set_wave(axis, 247, fac1000);
+				tmc2130_wave_fac[axis] = fac1000;
 			}
 		}
 		else if (strchr_pointer[1+5] == '@')
@@ -555,7 +604,9 @@ void dcode_2130()
 		}
 	}
 }
+#endif //TMC2130
 
+#ifdef PAT9125
 void dcode_9125()
 {
 	LOG("D9125 - PAT9125\n");
@@ -594,5 +645,7 @@ void dcode_9125()
 		LOG("fsensor_log=%d\n", fsensor_log);
 	}
 }
+#endif //PAT9125
+
 
 #endif //DEBUG_DCODES

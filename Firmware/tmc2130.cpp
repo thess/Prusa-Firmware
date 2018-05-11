@@ -3,11 +3,16 @@
 #ifdef TMC2130
 
 #include "tmc2130.h"
-#include <SPI.h>
-#include "LiquidCrystal.h"
+#include "LiquidCrystal_Prusa.h"
 #include "ultralcd.h"
+#ifndef NEW_SPI
+#include <SPI.h>
+#else //NEW_SPI
+#include "spi.h"
+#endif //NEW_SPI
 
-extern LiquidCrystal lcd;
+
+extern LiquidCrystal_Prusa lcd;
 
 #define TMC2130_GCONF_NORMAL 0x00000000 // spreadCycle
 #define TMC2130_GCONF_SGSENS 0x00003180 // spreadCycle with stallguard (stall activates DIAG0 and DIAG1 [pushpull])
@@ -47,7 +52,7 @@ uint8_t tmc2130_sg_thr[4] = {TMC2130_SG_THRS_X, TMC2130_SG_THRS_Y, TMC2130_SG_TH
 uint8_t tmc2130_sg_thr_home[4] = {3, 3, TMC2130_SG_THRS_Z, TMC2130_SG_THRS_E};
 
 
-uint8_t sg_homing_axes_mask = 0x00;
+uint8_t tmc2130_sg_homing_axes_mask = 0x00;
 
 uint8_t tmc2130_sg_meassure = 0xff;
 uint32_t tmc2130_sg_meassure_cnt = 0;
@@ -126,7 +131,16 @@ uint8_t tmc2130_rx(uint8_t axis, uint8_t addr, uint32_t* rval);
 
 void tmc2130_setup_chopper(uint8_t axis, uint8_t mres, uint8_t current_h, uint8_t current_r);
 
-
+uint16_t __tcoolthrs(uint8_t axis)
+{
+	switch (axis)
+	{
+	case X_AXIS: return TMC2130_TCOOLTHRS_X;
+	case Y_AXIS: return TMC2130_TCOOLTHRS_Y;
+	case Z_AXIS: return TMC2130_TCOOLTHRS_Z;
+	}
+	return 0;
+}
 
 void tmc2130_init()
 {
@@ -143,13 +157,15 @@ void tmc2130_init()
 	SET_INPUT(Y_TMC2130_DIAG);
 	SET_INPUT(Z_TMC2130_DIAG);
 	SET_INPUT(E0_TMC2130_DIAG);
+#ifndef NEW_SPI
 	SPI.begin();
+#endif //NEW_SPI
 	for (int axis = 0; axis < 2; axis++) // X Y axes
 	{
 		tmc2130_setup_chopper(axis, tmc2130_mres[axis], tmc2130_current_h[axis], tmc2130_current_r[axis]);
 		tmc2130_wr(axis, TMC2130_REG_TPOWERDOWN, 0x00000000);
 		tmc2130_wr(axis, TMC2130_REG_COOLCONF, (((uint32_t)tmc2130_sg_thr[axis]) << 16));
-		tmc2130_wr(axis, TMC2130_REG_TCOOLTHRS, (tmc2130_mode == TMC2130_MODE_SILENT)?0:((axis==X_AXIS)?TMC2130_TCOOLTHRS_X:TMC2130_TCOOLTHRS_Y));
+		tmc2130_wr(axis, TMC2130_REG_TCOOLTHRS, (tmc2130_mode == TMC2130_MODE_SILENT)?0:__tcoolthrs(axis));
 		tmc2130_wr(axis, TMC2130_REG_GCONF, (tmc2130_mode == TMC2130_MODE_SILENT)?TMC2130_GCONF_SILENT:TMC2130_GCONF_SGSENS);
 		tmc2130_wr_PWMCONF(axis, tmc2130_pwm_ampl[axis], tmc2130_pwm_grad[axis], tmc2130_pwm_freq[axis], tmc2130_pwm_auto[axis], 0, 0);
 		tmc2130_wr_TPWMTHRS(axis, TMC2130_TPWMTHRS);
@@ -159,7 +175,15 @@ void tmc2130_init()
 	{
 		tmc2130_setup_chopper(axis, tmc2130_mres[axis], tmc2130_current_h[axis], tmc2130_current_r[axis]);
 		tmc2130_wr(axis, TMC2130_REG_TPOWERDOWN, 0x00000000);
+#ifndef TMC2130_STEALTH_Z
 		tmc2130_wr(axis, TMC2130_REG_GCONF, TMC2130_GCONF_SGSENS);
+#else //TMC2130_STEALTH_Z
+		tmc2130_wr(axis, TMC2130_REG_COOLCONF, (((uint32_t)tmc2130_sg_thr[axis]) << 16));
+		tmc2130_wr(axis, TMC2130_REG_TCOOLTHRS, (tmc2130_mode == TMC2130_MODE_SILENT)?0:__tcoolthrs(axis));
+		tmc2130_wr(axis, TMC2130_REG_GCONF, (tmc2130_mode == TMC2130_MODE_SILENT)?TMC2130_GCONF_SILENT:TMC2130_GCONF_SGSENS);
+		tmc2130_wr_PWMCONF(axis, tmc2130_pwm_ampl[axis], tmc2130_pwm_grad[axis], tmc2130_pwm_freq[axis], tmc2130_pwm_auto[axis], 0, 0);
+		tmc2130_wr_TPWMTHRS(axis, TMC2130_TPWMTHRS);
+#endif //TMC2130_STEALTH_Z
 	}
 	for (int axis = 3; axis < 4; axis++) // E axis
 	{
@@ -186,9 +210,9 @@ void tmc2130_init()
 	tmc2130_sg_cnt[3] = 0;
 
 #ifdef TMC2130_LINEARITY_CORRECTION
-	tmc2130_set_wave(X_AXIS, 247, tmc2130_wave_fac[X_AXIS]);
-	tmc2130_set_wave(Y_AXIS, 247, tmc2130_wave_fac[Y_AXIS]);
-	tmc2130_set_wave(Z_AXIS, 247, tmc2130_wave_fac[Z_AXIS]);
+//	tmc2130_set_wave(X_AXIS, 247, tmc2130_wave_fac[X_AXIS]);
+//	tmc2130_set_wave(Y_AXIS, 247, tmc2130_wave_fac[Y_AXIS]);
+//	tmc2130_set_wave(Z_AXIS, 247, tmc2130_wave_fac[Z_AXIS]);
 	tmc2130_set_wave(E_AXIS, 247, tmc2130_wave_fac[E_AXIS]);
 #endif //TMC2130_LINEARITY_CORRECTION
 
@@ -231,7 +255,7 @@ void tmc2130_st_isr(uint8_t last_step_mask)
 			}
 		}
 	}
-	if (sg_homing_axes_mask == 0)
+	if (tmc2130_sg_homing_axes_mask == 0)
 	{
 		if (tmc2130_sg_stop_on_crash && crash)
 		{
@@ -258,19 +282,21 @@ bool tmc2130_update_sg()
 
 void tmc2130_home_enter(uint8_t axes_mask)
 {
-//	printf_P(PSTR("tmc2130_home_enter(axes_mask=0x%02x)\n"), axes_mask);
+	printf_P(PSTR("tmc2130_home_enter(axes_mask=0x%02x)\n"), axes_mask);
 #ifdef TMC2130_SG_HOMING
+	if (axes_mask & 0x03) //X or Y
+		tmc2130_wait_standstill_xy(1000);
 	for (uint8_t axis = X_AXIS; axis <= Z_AXIS; axis++) //X Y and Z axes
 	{
 		uint8_t mask = (X_AXIS_MASK << axis);
 		if (axes_mask & mask)
 		{
-			sg_homing_axes_mask |= mask;
+			tmc2130_sg_homing_axes_mask |= mask;
 			//Configuration to spreadCycle
 			tmc2130_wr(axis, TMC2130_REG_GCONF, TMC2130_GCONF_NORMAL);
 			tmc2130_wr(axis, TMC2130_REG_COOLCONF, (((uint32_t)tmc2130_sg_thr_home[axis]) << 16));
 //			tmc2130_wr(axis, TMC2130_REG_COOLCONF, (((uint32_t)tmc2130_sg_thr[axis]) << 16) | ((uint32_t)1 << 24));
-			tmc2130_wr(axis, TMC2130_REG_TCOOLTHRS, (axis==X_AXIS)?TMC2130_TCOOLTHRS_X:TMC2130_TCOOLTHRS_Y);
+			tmc2130_wr(axis, TMC2130_REG_TCOOLTHRS, __tcoolthrs(axis));
 			tmc2130_setup_chopper(axis, tmc2130_mres[axis], tmc2130_current_h[axis], tmc2130_current_r_home[axis]);
 			if (mask & (X_AXIS_MASK | Y_AXIS_MASK | Z_AXIS_MASK))
 				tmc2130_wr(axis, TMC2130_REG_GCONF, TMC2130_GCONF_SGSENS); //stallguard output DIAG1, DIAG1 = pushpull
@@ -281,16 +307,22 @@ void tmc2130_home_enter(uint8_t axes_mask)
 
 void tmc2130_home_exit()
 {
-//	printf_P(PSTR("tmc2130_home_exit sg_homing_axes_mask=0x%02x\n"), sg_homing_axes_mask);
+	printf_P(PSTR("tmc2130_home_exit tmc2130_sg_homing_axes_mask=0x%02x\n"), tmc2130_sg_homing_axes_mask);
 #ifdef TMC2130_SG_HOMING
-	if (sg_homing_axes_mask)
+	if (tmc2130_sg_homing_axes_mask & 0x03) //X or Y
+		tmc2130_wait_standstill_xy(1000);
+	if (tmc2130_sg_homing_axes_mask)
 	{
 		for (uint8_t axis = X_AXIS; axis <= Z_AXIS; axis++) //X Y and Z axes
 		{
 			uint8_t mask = (X_AXIS_MASK << axis);
-			if (sg_homing_axes_mask & mask & (X_AXIS_MASK | Y_AXIS_MASK))
+			if (tmc2130_sg_homing_axes_mask & mask & (X_AXIS_MASK | Y_AXIS_MASK | Z_AXIS_MASK))
 			{
+#ifndef TMC2130_STEALTH_Z
+				if ((tmc2130_mode == TMC2130_MODE_SILENT) && (axis != Z_AXIS))
+#else //TMC2130_STEALTH_Z
 				if (tmc2130_mode == TMC2130_MODE_SILENT)
+#endif //TMC2130_STEALTH_Z
 				{
 					tmc2130_wr(axis, TMC2130_REG_GCONF, TMC2130_GCONF_SILENT); // Configuration back to stealthChop
 					tmc2130_wr(axis, TMC2130_REG_TCOOLTHRS, 0);
@@ -302,12 +334,12 @@ void tmc2130_home_exit()
 					tmc2130_setup_chopper(axis, tmc2130_mres[axis], tmc2130_current_h[axis], tmc2130_current_r[axis]);
 //					tmc2130_wr(axis, TMC2130_REG_COOLCONF, (((uint32_t)tmc2130_sg_thr[axis]) << 16) | ((uint32_t)1 << 24));
 					tmc2130_wr(axis, TMC2130_REG_COOLCONF, (((uint32_t)tmc2130_sg_thr[axis]) << 16));
-					tmc2130_wr(axis, TMC2130_REG_TCOOLTHRS, (tmc2130_mode == TMC2130_MODE_SILENT)?0:((axis==X_AXIS)?TMC2130_TCOOLTHRS_X:TMC2130_TCOOLTHRS_Y));
+					tmc2130_wr(axis, TMC2130_REG_TCOOLTHRS, __tcoolthrs(axis));
 					tmc2130_wr(axis, TMC2130_REG_GCONF, TMC2130_GCONF_SGSENS);
 				}
 			}
 		}
-		sg_homing_axes_mask = 0x00;
+		tmc2130_sg_homing_axes_mask = 0x00;
 	}
 	tmc2130_sg_crash = false;
 #endif
@@ -590,11 +622,15 @@ inline void tmc2130_cs_high(uint8_t axis)
 	}
 }
 
+#ifndef NEW_SPI
 
 uint8_t tmc2130_tx(uint8_t axis, uint8_t addr, uint32_t wval)
 {
 	//datagram1 - request
+	printf_P(PSTR("tmc2130_tx %d 0x%02hhx, 0x%08lx\n"), axis, addr, wval);
 	SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE3));
+	printf_P(PSTR(" SPCR = 0x%02hhx\n"), SPCR);
+	printf_P(PSTR(" SPSR = 0x%02hhx\n"), SPSR);
 	tmc2130_cs_low(axis);
 	SPI.transfer(addr); // address
 	SPI.transfer((wval >> 24) & 0xff); // MSB
@@ -631,6 +667,62 @@ uint8_t tmc2130_rx(uint8_t axis, uint8_t addr, uint32_t* rval)
 	if (rval != 0) *rval = val32;
 	return stat;
 }
+
+#else //NEW_SPI
+
+//Arduino SPI
+//#define TMC2130_SPI_ENTER()    SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE3))
+//#define TMC2130_SPI_TXRX       SPI.transfer
+//#define TMC2130_SPI_LEAVE      SPI.endTransaction
+
+//spi
+#define TMC2130_SPI_ENTER()    spi_setup(TMC2130_SPCR, TMC2130_SPSR)
+#define TMC2130_SPI_TXRX       spi_txrx
+#define TMC2130_SPI_LEAVE()
+
+uint8_t tmc2130_tx(uint8_t axis, uint8_t addr, uint32_t wval)
+{
+	//datagram1 - request
+	TMC2130_SPI_ENTER();
+	tmc2130_cs_low(axis);
+	TMC2130_SPI_TXRX(addr); // address
+	TMC2130_SPI_TXRX((wval >> 24) & 0xff); // MSB
+	TMC2130_SPI_TXRX((wval >> 16) & 0xff);
+	TMC2130_SPI_TXRX((wval >> 8) & 0xff);
+	TMC2130_SPI_TXRX(wval & 0xff); // LSB
+	tmc2130_cs_high(axis);
+	TMC2130_SPI_LEAVE();
+}
+
+uint8_t tmc2130_rx(uint8_t axis, uint8_t addr, uint32_t* rval)
+{
+	//datagram1 - request
+	TMC2130_SPI_ENTER();
+	tmc2130_cs_low(axis);
+	TMC2130_SPI_TXRX(addr); // address
+	TMC2130_SPI_TXRX(0); // MSB
+	TMC2130_SPI_TXRX(0);
+	TMC2130_SPI_TXRX(0);
+	TMC2130_SPI_TXRX(0); // LSB
+	tmc2130_cs_high(axis);
+	TMC2130_SPI_LEAVE();
+	//datagram2 - response
+	TMC2130_SPI_ENTER();
+	tmc2130_cs_low(axis);
+	uint8_t stat = TMC2130_SPI_TXRX(0); // status
+	uint32_t val32 = 0;
+	val32 = TMC2130_SPI_TXRX(0); // MSB
+	val32 = (val32 << 8) | TMC2130_SPI_TXRX(0);
+	val32 = (val32 << 8) | TMC2130_SPI_TXRX(0);
+	val32 = (val32 << 8) | TMC2130_SPI_TXRX(0); // LSB
+	tmc2130_cs_high(axis);
+	TMC2130_SPI_LEAVE();
+	if (rval != 0) *rval = val32;
+	return stat;
+}
+
+#endif //NEW_SPI
+
 
 void tmc2130_eeprom_load_config()
 {
@@ -821,14 +913,16 @@ void tmc2130_get_wave(uint8_t axis, uint8_t* data, FILE* stream)
 	tmc2130_setup_chopper(axis, tmc2130_mres[axis], tmc2130_current_h[axis], tmc2130_current_r[axis]);
 }
 
-void tmc2130_set_wave(uint8_t axis, uint8_t amp, uint8_t fac200)
+void tmc2130_set_wave(uint8_t axis, uint8_t amp, uint8_t fac1000)
 {
 // TMC2130 wave compression algorithm
 // optimized for minimal memory requirements
-	printf_P(PSTR("tmc2130_set_wave %d %d\n"), axis, fac200);
-	if (fac200 < TMC2130_WAVE_FAC200_MIN) fac200 = 0;
-	if (fac200 > TMC2130_WAVE_FAC200_MAX) fac200 = TMC2130_WAVE_FAC200_MAX;
-	float fac = (float)fac200/200; //correction factor
+	printf_P(PSTR("tmc2130_set_wave %hhd %hhd\n"), axis, fac1000);
+	if (fac1000 < TMC2130_WAVE_FAC1000_MIN) fac1000 = 0;
+	if (fac1000 > TMC2130_WAVE_FAC1000_MAX) fac1000 = TMC2130_WAVE_FAC1000_MAX;
+	float fac = 0;
+	if (fac1000) fac = (float)((uint16_t)fac1000 + 1000) / 1000; //correction factor
+	printf_P(PSTR(" factor: %s\n"), ftostr43(fac));
 	uint8_t vA = 0;                //value of currentA
 	uint8_t va = 0;                //previous vA
 	uint8_t d0 = 0;                //delta0

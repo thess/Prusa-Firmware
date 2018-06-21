@@ -5,7 +5,9 @@ use strict;
 use warnings;
 
 #my @langs = ("en","cz","it","es","de");
-my @langs = ("en","cz");
+#my @langs = ("en","cz");
+my @langs = ("en");
+
 
 sub parselang 
 {
@@ -219,6 +221,8 @@ foreach my $key (sort(keys %texts)) {
 		# All strings are English.
 	    print $fh "extern const char* const ${key}_LANG_TABLE[1];\n";
 		print $fh "#define $key LANG_TABLE_SELECT_EXPLICIT(${key}_LANG_TABLE, 0)\n";
+		print $fh "#define ${key}_EXPLICIT(LANG) LANG_TABLE_SELECT_EXPLICIT(${key}_LANG_TABLE, 0)\n"
+			if ($key eq "MSG_LANGUAGE_NAME" || $key eq "MSG_LANGUAGE_SELECT");
 	} else {
 	    print $fh "extern const char* const ${key}_LANG_TABLE[LANG_NUM];\n";
 		print $fh "#define $key LANG_TABLE_SELECT(${key}_LANG_TABLE)\n";

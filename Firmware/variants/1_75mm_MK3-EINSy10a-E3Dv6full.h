@@ -210,10 +210,10 @@ const bool Z_MIN_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 #define TMC2130_PWM_AUTO_Y  1         // PWMCONF
 #define TMC2130_PWM_FREQ_Y  2         // PWMCONF
 
-#define TMC2130_PWM_GRAD_E  2         // PWMCONF
-#define TMC2130_PWM_AMPL_E  235       // PWMCONF
-#define TMC2130_PWM_AUTO_E  1         // PWMCONF
-#define TMC2130_PWM_FREQ_E  2         // PWMCONF
+//#define TMC2130_PWM_GRAD_E  2         // PWMCONF
+//#define TMC2130_PWM_AMPL_E  235       // PWMCONF
+//#define TMC2130_PWM_AUTO_E  1         // PWMCONF
+//#define TMC2130_PWM_FREQ_E  2         // PWMCONF
 
 #define TMC2130_PWM_GRAD_Z  4         // PWMCONF
 #define TMC2130_PWM_AMPL_Z  200       // PWMCONF

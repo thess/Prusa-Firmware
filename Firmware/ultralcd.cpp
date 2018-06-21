@@ -225,7 +225,9 @@ static void lcd_prepare_menu();
 //static void lcd_move_menu();
 static void lcd_settings_menu();
 static void lcd_calibration_menu();
+#if (LANG_NUM > 1)
 static void lcd_language_menu();
+#endif
 static void lcd_control_temperature_menu();
 static void lcd_control_temperature_preheat_pla_settings_menu();
 static void lcd_control_temperature_preheat_abs_settings_menu();
@@ -266,7 +268,9 @@ static void menu_action_back(menuFunc_t data = 0);
 static void menu_action_submenu(menuFunc_t data);
 static void menu_action_gcode(const char* pgcode);
 static void menu_action_function(menuFunc_t data);
+#if (LANG_NUM > 1)
 static void menu_action_setlang(unsigned char lang);
+#endif
 static void menu_action_sdfile(const char* filename, char* longFilename);
 static void menu_action_sddirectory(const char* filename, char* longFilename);
 static void menu_action_setting_edit_bool(const char* pstr, bool* ptr);
@@ -423,6 +427,7 @@ static void lcd_goto_menu(menuFunc_t menu, const uint32_t encoder = 0, const boo
 
 /* Main status screen. It's up to the implementation specific part to show what is needed. As this is very display dependent */
 
+#if (LANG_NUM > 1)
 // Language selection dialog not active.
 #define LANGSEL_OFF 0
 // Language selection dialog modal, entered from the info screen. This is the case on firmware boot up,
@@ -432,21 +437,30 @@ static void lcd_goto_menu(menuFunc_t menu, const uint32_t encoder = 0, const boo
 #define LANGSEL_ACTIVE 2
 // Language selection dialog status
 unsigned char langsel = LANGSEL_OFF;
+#endif
 
 void set_language_from_EEPROM() {
   unsigned char eep = eeprom_read_byte((unsigned char*)EEPROM_LANG);
-  if (eep < LANG_NUM)
-  {
-    lang_selected = eep;
-    // Language is valid, no need to enter the language selection screen.
-    langsel = LANGSEL_OFF;
-  }
-  else
-  {
-    lang_selected = LANG_ID_DEFAULT;
-    // Invalid language, enter the language selection screen in a modal mode.
-    langsel = LANGSEL_MODAL;
-  }
+  #if (LANG_NUM > 1)
+	if (eep < LANG_NUM)
+	{
+		lang_selected = eep;
+		// Language is valid, no need to enter the language selection screen.
+		langsel = LANGSEL_OFF;
+	}
+	else
+	{
+		lang_selected = LANG_ID_DEFAULT;
+		// Invalid language, enter the language selection screen in a modal mode.
+		langsel = LANGSEL_MODAL;
+	}
+  #else
+	  lang_selected = LANG_ID_DEFAULT;
+		if (eep != LANG_ID_DEFAULT)
+		{
+			eeprom_update_byte((unsigned char *)EEPROM_LANG, LANG_ID_DEFAULT);
+		}
+  #endif
 }
 
 static void lcd_status_screen()
@@ -465,12 +479,12 @@ static void lcd_status_screen()
 		eeprom_update_dword((uint32_t *)EEPROM_TOTALTIME, 0);
 		eeprom_update_dword((uint32_t *)EEPROM_FILAMENTUSED, 0);
 	}
-	
-	if (langsel) {
-      //strncpy_P(lcd_status_message, PSTR(">>>>>>>>>>>> PRESS v"), LCD_WIDTH);
-      // Entering the language selection screen in a modal mode.
-      
-    }
+	#if (LANG_NUM > 1)
+		if (langsel) {
+		//strncpy_P(lcd_status_message, PSTR(">>>>>>>>>>>> PRESS v"), LCD_WIDTH);
+		// Entering the language selection screen in a modal mode.
+		}
+	#endif
   }
 
   
@@ -2604,7 +2618,7 @@ static void lcd_adjust_bed()
         eeprom_update_int8((unsigned char*)EEPROM_BED_CORRECTION_LEFT, menuData.adjustBed.mid_left = menuData.adjustBed.mid_left2);
 
     START_MENU();
-	MENU_ITEM(back, MSG_SETTINGS, lcd_calibration_menu);
+	MENU_ITEM(back, MSG_SETTINGS, 0);
     MENU_ITEM_EDIT(int3, MSG_BED_CORRECTION_FRONT_LEFT, &menuData.adjustBed.front_left2, -BED_ADJUSTMENT_UM_MAX, BED_ADJUSTMENT_UM_MAX);
     MENU_ITEM_EDIT(int3, MSG_BED_CORRECTION_FRONT_CENTR, &menuData.adjustBed.front_centr2, -BED_ADJUSTMENT_UM_MAX, BED_ADJUSTMENT_UM_MAX);
     MENU_ITEM_EDIT(int3, MSG_BED_CORRECTION_FRONT_RIGHT, &menuData.adjustBed.front_right2, -BED_ADJUSTMENT_UM_MAX, BED_ADJUSTMENT_UM_MAX);
@@ -2613,6 +2627,7 @@ static void lcd_adjust_bed()
     MENU_ITEM_EDIT(int3, MSG_BED_CORRECTION_REAR_CENTR, &menuData.adjustBed.rear_centr2, -BED_ADJUSTMENT_UM_MAX, BED_ADJUSTMENT_UM_MAX);
     MENU_ITEM_EDIT(int3, MSG_BED_CORRECTION_REAR_LEFT, &menuData.adjustBed.rear_left2, -BED_ADJUSTMENT_UM_MAX, BED_ADJUSTMENT_UM_MAX);
     MENU_ITEM_EDIT(int3, MSG_BED_CORRECTION_MID_LEFT, &menuData.adjustBed.mid_left2, -BED_ADJUSTMENT_UM_MAX, BED_ADJUSTMENT_UM_MAX);
+    MENU_ITEM(function, MSG_BED_CORRECTION_RESET, lcd_adjust_bed_reset);
     END_MENU();
 }
 // End Hyperfine Bed Tuning
@@ -3750,10 +3765,11 @@ static void lcd_set_lang(unsigned char lang) {
   lang_selected = lang;
   firstrun = 1;
   eeprom_update_byte((unsigned char *)EEPROM_LANG, lang);
-  /*langsel=0;*/
-  if (langsel == LANGSEL_MODAL)
-    // From modal mode to an active mode? This forces the menu to return to the setup menu.
-    langsel = LANGSEL_ACTIVE;
+  #if (LANG_NUM > 1)
+	if (langsel == LANGSEL_MODAL)
+		// From modal mode to an active mode? This forces the menu to return to the setup menu.
+		langsel = LANGSEL_ACTIVE;
+  #endif
 }
 
 #ifdef PAT9125
@@ -3793,6 +3809,7 @@ void lcd_force_language_selection() {
   eeprom_update_byte((unsigned char *)EEPROM_LANG, LANG_ID_FORCE_SELECTION);
 }
 
+#if (LANG_NUM > 1)
 static void lcd_language_menu()
 {
   START_MENU();
@@ -3806,6 +3823,7 @@ static void lcd_language_menu()
   }
   END_MENU();
 }
+#endif
 
 void lcd_mesh_bedleveling()
 {
@@ -4265,7 +4283,9 @@ static void lcd_settings_menu()
 	{
 		MENU_ITEM(submenu, MSG_BABYSTEP_Z, lcd_babystep_z);
 	}
-	MENU_ITEM(submenu, MSG_LANGUAGE_SELECT, lcd_language_menu);
+	#if (LANG_NUM > 1)
+		MENU_ITEM(submenu, MSG_LANGUAGE_SELECT, lcd_language_menu);
+	#endif
 
   if (card.ToshibaFlashAir_isEnabled()) {
     MENU_ITEM(function, MSG_TOSHIBA_FLASH_AIR_COMPATIBILITY_ON, lcd_toshiba_flash_air_compatibility_toggle);
@@ -4616,6 +4636,7 @@ void lcd_mylang_drawmenu(int cursor) {
 }
 */
 
+#if (LANG_NUM > 1)
 void lcd_mylang_drawmenu(int cursor) {
   int first = 0;
   if (cursor>3) first = cursor-3;
@@ -4751,7 +4772,12 @@ void lcd_mylang() {
   lcd_return_to_status();
 
 }
-
+#else
+	void lcd_mylang()
+	{
+		lcd_set_lang(LANG_ID_DEFAULT);
+	}
+#endif
 void bowden_menu() {
 	int enc_dif = encoderDiff;
 	int cursor_pos = 0;
@@ -7352,9 +7378,11 @@ static void menu_action_submenu(menuFunc_t data) {
 static void menu_action_gcode(const char* pgcode) {
   enquecommand_P(pgcode);
 }
-static void menu_action_setlang(unsigned char lang) {
-  lcd_set_lang(lang);
-}
+#if (LANG_NUM > 1)
+	static void menu_action_setlang(unsigned char lang) {
+	lcd_set_lang(lang);
+	}
+	#endif
 static void menu_action_function(menuFunc_t data) {
   (*data)();
 }

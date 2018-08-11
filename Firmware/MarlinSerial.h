@@ -129,7 +129,8 @@ class MarlinSerial //: public Stream
             if((M_UCSRxA & (1<<M_RXCx)) != 0) {
                 // Test for a framing error.
                 if (M_UCSRxA & (1<<M_FEx)) {
-                    // Dummy register read (discard)
+                    // Characters received with the framing errors will be ignored.
+                    // The temporary variable "c" was made volatile, so the compiler does not optimize this out.
                     (void)(*(char *)M_UDRx);
                 } else {
                     unsigned char c  =  M_UDRx;
@@ -152,7 +153,8 @@ class MarlinSerial //: public Stream
             if((UCSR1A & (1<<RXC1)) != 0) {
                 // Test for a framing error.
                 if (UCSR1A & (1<<FE1)) {
-                    // Dummy register read (discard)
+                    // Characters received with the framing errors will be ignored.
+                    // The temporary variable "c" was made volatile, so the compiler does not optimize this out.
                     (void)(*(char *)UDR1);
                 } else {
                     unsigned char c  =  UDR1;
@@ -195,12 +197,12 @@ class MarlinSerial //: public Stream
         write(*buffer++);
     }
 
-    static FORCE_INLINE void print(const String &s)
+/*    static FORCE_INLINE void print(const String &s)
     {
       for (int i = 0; i < (int)s.length(); i++) {
         write(s[i]);
       }
-    }
+    }*/
     
     static FORCE_INLINE void print(const char *str)
     {
@@ -214,7 +216,7 @@ class MarlinSerial //: public Stream
     static void print(unsigned long, int = DEC);
     static void print(double, int = 2);
 
-    static void println(const String &s);
+//    static void println(const String &s);
     static void println(const char[]);
     static void println(char, int = BYTE);
     static void println(unsigned char, int = BYTE);

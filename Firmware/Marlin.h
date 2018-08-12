@@ -62,8 +62,7 @@
   #define MYSERIAL MSerial
 #endif
 
-extern FILE _lcdout;
-#define lcdout (&_lcdout)
+#include "lcd.h"
 
 extern FILE _uartout;
 #define uartout (&_uartout)
@@ -229,13 +228,18 @@ bool IsStopped();
 
 //put an ASCII command at the end of the current buffer.
 void enquecommand(const char *cmd, bool from_progmem = false);
+
 //put an ASCII command at the end of the current buffer, read from flash
 #define enquecommand_P(cmd) enquecommand(cmd, true)
+
+//put an ASCII command at the begin of the current buffer
 void enquecommand_front(const char *cmd, bool from_progmem = false);
-//put an ASCII command at the end of the current buffer, read from flash
-#define enquecommand_P(cmd) enquecommand(cmd, true)
+
+//put an ASCII command at the begin of the current buffer, read from flash
 #define enquecommand_front_P(cmd) enquecommand_front(cmd, true)
+
 void repeatcommand_front();
+
 // Remove all lines from the command queue.
 void cmdqueue_reset();
 
@@ -350,14 +354,17 @@ extern char dir_names[3][9];
 // save/restore printing
 extern bool saved_printing;
 
+//save/restore printing in case that mmu is not responding
+extern bool mmu_print_saved;
+
 //estimated time to end of the print
 extern uint8_t print_percent_done_normal;
-extern uint16_t print_time_remaining_normal;
+extern uint32_t print_time_remaining_normal;
 extern uint8_t print_percent_done_silent;
-extern uint16_t print_time_remaining_silent;
-#define PRINT_TIME_REMAINING_INIT 65535
-#define PRINT_PERCENT_DONE_INIT 255
-#define PRINTER_ACTIVE (IS_SD_PRINTING || is_usb_printing || isPrintPaused || (custom_message_type == 4) || saved_printing || (lcd_commands_type == LCD_COMMAND_V2_CAL) || card.paused)
+extern uint32_t print_time_remaining_silent;
+#define PRINT_TIME_REMAINING_INIT 0xffffffff
+#define PRINT_PERCENT_DONE_INIT   0xff
+#define PRINTER_ACTIVE (IS_SD_PRINTING || is_usb_printing || isPrintPaused || (custom_message_type == 4) || saved_printing || (lcd_commands_type == LCD_COMMAND_V2_CAL) || card.paused || mmu_print_saved)
 
 extern void calculate_extruder_multipliers();
 
@@ -392,6 +399,7 @@ void serialecho_temperatures();
 bool check_commands();
 
 void uvlo_();
+void uvlo_tiny();
 void recover_print(uint8_t automatic); 
 void setup_uvlo_interrupt();
 
@@ -399,7 +407,8 @@ void setup_uvlo_interrupt();
 void setup_fan_interrupt();
 #endif
 
-extern void recover_machine_state_after_power_panic();
+//extern void recover_machine_state_after_power_panic();
+extern void recover_machine_state_after_power_panic(bool bTiny);
 extern void restore_print_from_eeprom();
 extern void position_menu();
 
@@ -407,14 +416,10 @@ extern void print_world_coordinates();
 extern void print_physical_coordinates();
 extern void print_mesh_bed_leveling_table();
 
-#ifdef PAT9125
-extern void fsensor_init();
-#endif //PAT9125
 
 //estimated time to end of the print
 extern uint16_t print_time_remaining();
 extern uint8_t print_percent_done();
-static void print_time_remaining_init();
 
 #ifdef HOST_KEEPALIVE_FEATURE
 
@@ -451,7 +456,9 @@ void force_high_power_mode(bool start_high_power_section);
 #endif //TMC2130
 
 // G-codes
-void gcode_G28(bool home_x, bool home_y, bool home_z, bool calib);
+void gcode_G28(bool home_x_axis, long home_x_value, bool home_y_axis, long home_y_value, bool home_z_axis, long home_z_value, bool calib, bool without_mbl);
+void gcode_G28(bool home_x_axis, bool home_y_axis, bool home_z_axis);
+
 bool gcode_M45(bool onlyZ, int8_t verbosity_level);
 void gcode_M114();
 void gcode_M701();
@@ -459,3 +466,9 @@ void gcode_M701();
 #define UVLO !(PINE & (1<<4))
 
 void proc_commands();
+
+
+void M600_load_filament();
+void M600_load_filament_movements();
+void M600_wait_for_user();
+void M600_check_state();

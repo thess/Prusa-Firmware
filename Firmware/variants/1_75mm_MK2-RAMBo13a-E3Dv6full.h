@@ -19,6 +19,23 @@ GENERAL SETTINGS
 // Electronics
 #define MOTHERBOARD BOARD_RAMBO_MINI_1_3
 
+//Hyperfine Bed Leveling
+// Enable 8 point Mesh Bed Correction offsets
+// 8 points of correction (a thru h) starting at the front / home position
+//
+//	B A C K
+//   +-----------+
+//   | g   f   e |
+//   | h   X   d |
+//   | a   b   c |
+//   +-----------+
+//     F R O N T
+//
+// Maximum +-125 um vaules stored in EEPROM and +-500 um via gcode
+
+#define HBL //Activate Hyperfine Bed Leveling but disables FARM_MODE
+// end Hyperfine Bed Leveling
+
 // Prusa Single extruder multiple material suport
 //#define SNMM
 
@@ -414,13 +431,8 @@ THERMISTORS SETTINGS
 
 #define DEFAULT_PID_TEMP 210
 
-#ifdef SNMM
-#define DEFAULT_RETRACTION 4 //used for PINDA temp calibration and pause print
-#else
-#define DEFAULT_RETRACTION 1 //used for PINDA temp calibration and pause print
-#endif
 
-#define END_FILE_SECTION 10000 //number of bytes from end of file used for checking if file is complete
+#define END_FILE_SECTION 20000 //number of bytes from end of file used for checking if file is complete
 
 // Safety timer
 #define SAFETYTIMER

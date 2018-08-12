@@ -278,7 +278,7 @@
 "Front print fan?"
 
 #MSG_BED_CORRECTION_FRONT c=14 r=1
-"Front side[um]"
+"Fr.Centr b[um]"
 
 #MSG_SELFTEST_FANS c=0 r=0
 "Front/left fans"
@@ -392,7 +392,7 @@
 "Left hotend fan?"
 
 #MSG_BED_CORRECTION_LEFT c=14 r=1
-"Left side [um]"
+"Mi.Left  h[um]"
 
 #MSG_BABYSTEP_Z c=0 r=0
 "Live adjust Z"
@@ -611,7 +611,7 @@
 "prusa3d.com"
 
 #MSG_BED_CORRECTION_REAR c=14 r=1
-"Rear side [um]"
+"Re.Centr f[um]"
 
 #MSG_RECOVERING_PRINT c=20 r=1
 "Recovering print    "
@@ -632,7 +632,7 @@
 "Resuming print"
 
 #MSG_BED_CORRECTION_RIGHT c=14 r=1
-"Right side[um]"
+"Mi.Right d[um]"
 
 #MSG_SECOND_SERIAL_ON c=17 r=1
 "RPi port     [on]"

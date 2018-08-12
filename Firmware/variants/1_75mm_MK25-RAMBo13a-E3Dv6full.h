@@ -23,6 +23,23 @@
 #define STEEL_SHEET
 #define TACH0PULLUP
 
+//Hyperfine Bed Leveling
+// Enable 8 point Mesh Bed Correction offsets
+// 8 points of correction (a thru h) starting at the front / home position
+//
+//	B A C K
+//   +-----------+
+//   | g   f   e |
+//   | h   X   d |
+//   | a   b   c |
+//   +-----------+
+//     F R O N T
+//
+// Maximum +-125 um vaules stored in EEPROM and +-500 um via gcode
+
+#define HBL //Activate Hyperfine Bed Leveling but disables FARM_MODE
+// end Hyperfine Bed Leveling
+
 // Uncomment the below for the E3D PT100 temperature sensor (with or without PT100 Amplifier)
 //#define E3D_PT100_EXTRUDER_WITH_AMP
 //#define E3D_PT100_EXTRUDER_NO_AMP
@@ -85,7 +102,9 @@
 #define SHEET_PRINT_ZERO_REF_Y 0.f
 
 #define DEFAULT_MAX_FEEDRATE          {200, 200, 12, 120}      // (mm/sec)   max feedrate (M203)
+#define DEFAULT_MAX_FEEDRATE_SILENT         {172, 172, 12, 120}      // (mm/sec)   max feedrate (M203), silent mode
 #define DEFAULT_MAX_ACCELERATION      {1000, 1000, 200, 5000}  // (mm/sec^2) max acceleration (M201)
+#define DEFAULT_MAX_ACCELERATION_SILENT     {960, 960, 200, 5000}    // (mm/sec^2) max acceleration (M201), silent mode
 
 
 #define DEFAULT_ACCELERATION          1250   // X, Y, Z and E max acceleration in mm/s^2 for printing moves (M204S)
@@ -94,7 +113,7 @@
 #define MANUAL_FEEDRATE {2700, 2700, 1000, 100}   // set the speeds for manual moves (mm/min)
 
 //number of bytes from end of the file to start check
-#define END_FILE_SECTION 10000
+#define END_FILE_SECTION 20000
 
 #define Z_AXIS_ALWAYS_ON 1
 
@@ -110,8 +129,9 @@
 
 // Filament sensor
 #define PAT9125
+#define FILAMENT_SENSOR
 
-
+#define DEBUG_DCODE3
 
 //#define DEBUG_BUILD
 #ifdef DEBUG_BUILD
@@ -136,9 +156,7 @@
 //#define DEBUG_DISABLE_PRUSA_STATISTICS //disable prusa_statistics() mesages
 //#define DEBUG_XSTEP_DUP_PIN 21   //duplicate x-step output to pin 21 (SCL on P3)
 //#define DEBUG_YSTEP_DUP_PIN 21   //duplicate y-step output to pin 21 (SCL on P3)
-//#define DEBUG_BLINK_ACTIVE
 //#define DEBUG_DISABLE_FANCHECK     //disable fan check (no ISR INT7, check disabled)
-//#define DEBUG_DISABLE_FSENSORCHECK //disable fsensor check (no ISR INT7, check disabled)
 //#define DEBUG_DUMP_TO_2ND_SERIAL   //dump received characters to 2nd serial line
 //#define DEBUG_STEPPER_TIMER_MISSED // Stop on stepper timer overflow, beep and display a message.
 //#define PLANNER_DIAGNOSTICS // Show the planner queue status on printer display.
@@ -265,13 +283,6 @@
 #define Z_SILENT 0
 #define Z_HIGH_POWER 200
 #endif
-
-/*------------------------------------
- PAT9125 SETTINGS
- *------------------------------------*/
-
-#define PAT9125_XRES			0
-#define PAT9125_YRES			255
 
 /*------------------------------------
  BED SETTINGS
@@ -483,14 +494,9 @@
 
 #define MIN_PRINT_FAN_SPEED 75
 
-#ifdef SNMM
-#define DEFAULT_RETRACTION 4 //used for PINDA temp calibration and pause print
-#else
-#define DEFAULT_RETRACTION 1 //used for PINDA temp calibration and pause print
-#endif
 
 #define M600_TIMEOUT 600  //seconds
 
-#define SUPPORT_VERBOSITY
+//#define SUPPORT_VERBOSITY
 
 #endif //__CONFIGURATION_PRUSA_H

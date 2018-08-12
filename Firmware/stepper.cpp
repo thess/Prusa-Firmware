@@ -36,10 +36,10 @@
 #include "tmc2130.h"
 #endif //TMC2130
 
-#ifdef PAT9125
+#ifdef FILAMENT_SENSOR
 #include "fsensor.h"
 int fsensor_counter = 0; //counter for e-steps
-#endif //PAT9125
+#endif //FILAMENT_SENSOR
 
 #ifdef DEBUG_STACK_MONITOR
 uint16_t SP_min = 0x21FF;
@@ -407,16 +407,72 @@ ISR(TIMER1_COMPA_vect) {
   }
 }
 
+uint8_t last_dir_bits = 0;
+
+#ifdef BACKLASH_X
+uint8_t st_backlash_x = 0;
+#endif //BACKLASH_X
+#ifdef BACKLASH_Y
+uint8_t st_backlash_y = 0;
+#endif //BACKLASH_Y
+
 FORCE_INLINE void stepper_next_block()
 {
   // Anything in the buffer?
   //WRITE_NC(LOGIC_ANALYZER_CH2, true);
   current_block = plan_get_current_block();
   if (current_block != NULL) {
-#ifdef PAT9125
+#ifdef BACKLASH_X
+	if (current_block->steps_x.wide)
+	{ //X-axis movement
+		if ((current_block->direction_bits ^ last_dir_bits) & 1)
+		{
+			printf_P(PSTR("BL %d\n"), (current_block->direction_bits & 1)?st_backlash_x:-st_backlash_x);
+			if (current_block->direction_bits & 1)
+				WRITE_NC(X_DIR_PIN, INVERT_X_DIR);
+			else
+				WRITE_NC(X_DIR_PIN, !INVERT_X_DIR);
+			_delay_us(100);
+			for (uint8_t i = 0; i < st_backlash_x; i++)
+			{
+				WRITE_NC(X_STEP_PIN, !INVERT_X_STEP_PIN);
+				_delay_us(100);
+				WRITE_NC(X_STEP_PIN, INVERT_X_STEP_PIN);
+				_delay_us(900);
+			}
+		}
+		last_dir_bits &= ~1;
+		last_dir_bits |= current_block->direction_bits & 1;
+	}
+#endif
+#ifdef BACKLASH_Y
+	if (current_block->steps_y.wide)
+	{ //Y-axis movement
+		if ((current_block->direction_bits ^ last_dir_bits) & 2)
+		{
+			printf_P(PSTR("BL %d\n"), (current_block->direction_bits & 2)?st_backlash_y:-st_backlash_y);
+			if (current_block->direction_bits & 2)
+				WRITE_NC(Y_DIR_PIN, INVERT_Y_DIR);
+			else
+				WRITE_NC(Y_DIR_PIN, !INVERT_Y_DIR);
+			_delay_us(100);
+			for (uint8_t i = 0; i < st_backlash_y; i++)
+			{
+				WRITE_NC(Y_STEP_PIN, !INVERT_Y_STEP_PIN);
+				_delay_us(100);
+				WRITE_NC(Y_STEP_PIN, INVERT_Y_STEP_PIN);
+				_delay_us(900);
+			}
+		}
+		last_dir_bits &= ~2;
+		last_dir_bits |= current_block->direction_bits & 2;
+	}
+#endif
+
+#ifdef FILAMENT_SENSOR
     fsensor_counter = 0;
     fsensor_st_block_begin(current_block);
-#endif //PAT9125
+#endif //FILAMENT_SENSOR
     // The busy flag is set by the plan_get_current_block() call.
     // current_block->busy = true;
     // Initializes the trapezoid generator from the current block. Called whenever a new
@@ -472,7 +528,7 @@ FORCE_INLINE void stepper_next_block()
 #ifndef LIN_ADVANCE
       WRITE(E0_DIR_PIN, 
   #ifdef SNMM
-        (snmm_extruder == 0 || snmm_extruder == 2) ? !INVERT_E0_DIR :
+        (mmu_extruder == 0 || mmu_extruder == 2) ? !INVERT_E0_DIR :
   #endif // SNMM
         INVERT_E0_DIR);
 #endif /* LIN_ADVANCE */
@@ -481,7 +537,7 @@ FORCE_INLINE void stepper_next_block()
 #ifndef LIN_ADVANCE
       WRITE(E0_DIR_PIN,
   #ifdef SNMM
-        (snmm_extruder == 0 || snmm_extruder == 2) ? INVERT_E0_DIR :
+        (mmu_extruder == 0 || mmu_extruder == 2) ? INVERT_E0_DIR :
   #endif // SNMM
         !INVERT_E0_DIR);
 #endif /* LIN_ADVANCE */
@@ -704,9 +760,9 @@ FORCE_INLINE void stepper_tick_lowres()
 #ifdef LIN_ADVANCE
       ++ e_steps;
 #else
-  #ifdef PAT9125
+  #ifdef FILAMENT_SENSOR
       ++ fsensor_counter;
-  #endif //PAT9125
+  #endif //FILAMENT_SENSOR
       WRITE(E0_STEP_PIN, INVERT_E_STEP_PIN);
 #endif
     }
@@ -769,9 +825,9 @@ FORCE_INLINE void stepper_tick_highres()
 #ifdef LIN_ADVANCE
       ++ e_steps;
 #else
-  #ifdef PAT9125
+  #ifdef FILAMENT_SENSOR
       ++ fsensor_counter;
-  #endif //PAT9125
+  #endif //FILAMENT_SENSOR
       WRITE(E0_STEP_PIN, INVERT_E_STEP_PIN);
 #endif
     }
@@ -830,7 +886,7 @@ FORCE_INLINE void isr() {
           bool neg = e_steps < 0;
           bool dir =
         #ifdef SNMM
-            (neg == (snmm_extruder & 1))
+            (neg == (mmu_extruder & 1))
         #else
             neg
         #endif
@@ -844,9 +900,9 @@ FORCE_INLINE void isr() {
         estep_loops = (e_steps & 0x0ff00) ? 4 : e_steps;
         if (step_loops < estep_loops)
           estep_loops = step_loops;
-    #ifdef PAT9125
+    #ifdef FILAMENT_SENSOR
         fsensor_counter += estep_loops;
-    #endif //PAT9125
+    #endif //FILAMENT_SENSOR
         do {
           WRITE_NC(E0_STEP_PIN, !INVERT_E_STEP_PIN);
           -- e_steps;
@@ -970,9 +1026,9 @@ FORCE_INLINE void isr() {
       if (eISR_Rate == 0) {
         // There is not enough time to fit even a single additional tick.
         // Tick all the extruder ticks now.
-    #ifdef PAT9125
+    #ifdef FILAMENT_SENSOR
         fsensor_counter += e_steps;
-    #endif //PAT9125
+    #endif //FILAMENT_SENSOR
         MSerial.checkRx(); // Check for serial chars.
         do {
           WRITE_NC(E0_STEP_PIN, !INVERT_E_STEP_PIN);
@@ -992,20 +1048,21 @@ FORCE_INLINE void isr() {
 
     // If current block is finished, reset pointer
     if (step_events_completed.wide >= current_block->step_event_count.wide) {
-#ifdef PAT9125
+#ifdef FILAMENT_SENSOR
       fsensor_st_block_chunk(current_block, fsensor_counter);
 	    fsensor_counter = 0;
-#endif //PAT9125
+#endif //FILAMENT_SENSOR
+
       current_block = NULL;
       plan_discard_current_block();
     }
-#ifdef PAT9125
+#ifdef FILAMENT_SENSOR
   	else if (fsensor_counter >= fsensor_chunk_len)
   	{
       fsensor_st_block_chunk(current_block, fsensor_counter);
   	  fsensor_counter = 0;
   	}
-#endif //PAT9125
+#endif //FILAMENT_SENSOR
   }
 
 #ifdef TMC2130
@@ -1268,13 +1325,13 @@ void st_synchronize()
 		if (!tmc2130_update_sg())
 		{
 			manage_inactivity(true);
-			lcd_update();
+			lcd_update(0);
 		}
 #else //TMC2130
 		manage_heater();
 		// Vojtech: Don't disable motors inside the planner!
 		manage_inactivity(true);
-		lcd_update();
+		lcd_update(0);
 #endif //TMC2130
 	}
 }

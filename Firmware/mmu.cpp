@@ -19,14 +19,20 @@ extern char choose_extruder_menu();
 
 #define MMU_TODELAY 100
 #define MMU_TIMEOUT 10
+#define MMU_CMD_TIMEOUT 300000ul //milliseconds (5min timeout)
 
 #define MMU_HWRESET
 #define MMU_RST_PIN 76
 
+#define MMU_REQUIRED_FW_BUILDNR 81
 
 bool mmu_enabled = false;
 
+bool mmu_ready = false;
+
 int8_t mmu_state = 0;
+
+uint8_t mmu_cmd = 0;
 
 uint8_t mmu_extruder = 0;
 
@@ -37,6 +43,9 @@ int8_t mmu_finda = -1;
 int16_t mmu_version = -1;
 
 int16_t mmu_buildnr = -1;
+
+uint32_t mmu_last_request = 0;
+uint32_t mmu_last_response = 0;
 
 
 //clear rx buffer
@@ -49,7 +58,9 @@ void mmu_clr_rx_buf(void)
 int mmu_puts_P(const char* str)
 {
 	mmu_clr_rx_buf();                          //clear rx buffer
-    return fputs_P(str, uart2io);              //send command
+    int r = fputs_P(str, uart2io);             //send command
+	mmu_last_request = millis();
+	return r;
 }
 
 //send command - printf
@@ -60,19 +71,24 @@ int mmu_printf_P(const char* format, ...)
 	mmu_clr_rx_buf();                          //clear rx buffer
 	int r = vfprintf_P(uart2io, format, args); //send command
 	va_end(args);
+	mmu_last_request = millis();
 	return r;
 }
 
 //check 'ok' response
 int8_t mmu_rx_ok(void)
 {
-	return uart2_rx_str_P(PSTR("ok\n"));
+	int8_t res = uart2_rx_str_P(PSTR("ok\n"));
+	if (res == 1) mmu_last_response = millis();
+	return res;
 }
 
 //check 'start' response
 int8_t mmu_rx_start(void)
 {
-	return uart2_rx_str_P(PSTR("start\n"));
+	int8_t res = uart2_rx_str_P(PSTR("start\n"));
+	if (res == 1) mmu_last_response = millis();
+	return res;
 }
 
 //initialize mmu2 unit - first part - should be done at begining of startup process
@@ -123,6 +139,9 @@ void mmu_loop(void)
 		{
 			fscanf_P(uart2io, PSTR("%u"), &mmu_buildnr); //scan buildnr from buffer
 			printf_P(PSTR("MMU => '%dok'\n"), mmu_buildnr);
+			bool version_valid = mmu_check_version();
+			if (!version_valid) mmu_show_warning();
+			else puts_P(PSTR("MMU version valid"));
 			puts_P(PSTR("MMU <= 'P0'"));
 		    mmu_puts_P(PSTR("P0\n")); //send 'read finda' request
 			mmu_state = -4;
@@ -135,6 +154,64 @@ void mmu_loop(void)
 			printf_P(PSTR("MMU => '%dok'\n"), mmu_finda);
 			puts_P(PSTR("MMU - ENABLED"));
 			mmu_enabled = true;
+			mmu_state = 1;
+		}
+		return;
+	case 1:
+		if (mmu_cmd) //command request ?
+		{
+			if ((mmu_cmd >= MMU_CMD_T0) && (mmu_cmd <= MMU_CMD_T4))
+			{
+				int extruder = mmu_cmd - MMU_CMD_T0;
+				printf_P(PSTR("MMU <= 'T%d'\n"), extruder);
+				mmu_printf_P(PSTR("T%d\n"), extruder);
+				mmu_state = 3; // wait for response
+			}
+			else if ((mmu_cmd >= MMU_CMD_L0) && (mmu_cmd <= MMU_CMD_L4))
+			{
+			    int filament = mmu_cmd - MMU_CMD_L0;
+			    printf_P(PSTR("MMU <= 'L%d'\n"), filament);
+			    mmu_printf_P(PSTR("L%d\n"), filament);
+			    mmu_state = 3; // wait for response
+			}
+			else if (mmu_cmd == MMU_CMD_C0)
+			{
+				printf_P(PSTR("MMU <= 'C0'\n"));
+				mmu_puts_P(PSTR("C0\n")); //send continue loading
+				mmu_state = 3;
+			}
+			mmu_cmd = 0;
+		}
+		else if ((mmu_last_response + 1000) < millis()) //request every 1s
+		{
+			puts_P(PSTR("MMU <= 'P0'"));
+		    mmu_puts_P(PSTR("P0\n")); //send 'read finda' request
+			mmu_state = 2;
+		}
+		return;
+	case 2: //response to command P0
+		if (mmu_rx_ok() > 0)
+		{
+			fscanf_P(uart2io, PSTR("%hhu"), &mmu_finda); //scan finda from buffer
+			printf_P(PSTR("MMU => '%dok'\n"), mmu_finda);
+			mmu_state = 1;
+			if (mmu_cmd == 0)
+				mmu_ready = true;
+		}
+		else if ((mmu_last_request + MMU_CMD_TIMEOUT) < millis())
+		{ //resend request after timeout (30s)
+			mmu_state = 1;
+		}
+		return;
+	case 3: //response to commands T0-T4
+		if (mmu_rx_ok() > 0)
+		{
+			printf_P(PSTR("MMU => 'ok'\n"));
+			mmu_ready = true;
+			mmu_state = 1;
+		}
+		else if ((mmu_last_request + MMU_CMD_TIMEOUT) < millis())
+		{ //resend request after timeout (30s)
 			mmu_state = 1;
 		}
 		return;
@@ -162,10 +239,34 @@ int8_t mmu_set_filament_type(uint8_t extruder, uint8_t filament)
 	return timeout?1:0;
 }
 
-bool mmu_get_response(bool timeout)
+void mmu_command(uint8_t cmd)
 {
-	printf_P(PSTR("mmu_get_response - begin\n"));
-	//waits for "ok" from mmu
+	mmu_cmd = cmd;
+	mmu_ready = false;
+}
+
+bool mmu_get_response(void)
+{
+//	printf_P(PSTR("mmu_get_response - begin\n"));
+	KEEPALIVE_STATE(IN_PROCESS);
+	while (mmu_cmd != 0)
+	{
+//		mmu_loop();
+		delay_keep_alive(100);
+	}
+	while (!mmu_ready)
+	{
+//		mmu_loop();
+		if (mmu_state != 3)
+			break;
+		delay_keep_alive(100);
+	}
+	bool ret = mmu_ready;
+	mmu_ready = false;
+//	printf_P(PSTR("mmu_get_response - end %d\n"), ret?1:0);
+	return ret;
+
+/*	//waits for "ok" from mmu
 	//function returns true if "ok" was received
 	//if timeout is set to true function return false if there is no "ok" received before timeout
 	bool response = true;
@@ -182,7 +283,7 @@ bool mmu_get_response(bool timeout)
 		}
 	}
 	printf_P(PSTR("mmu_get_response - end %d\n"), response?1:0);
-	return response;
+	return response;*/
 }
 
 
@@ -197,7 +298,7 @@ void manage_response(bool move_axes, bool turn_off_nozzle)
 	float y_position_bckp = current_position[Y_AXIS];	
 	while(!response)
 	{
-		  response = mmu_get_response(true); //wait for "ok" from mmu
+		  response = mmu_get_response(); //wait for "ok" from mmu
 		  if (!response) { //no "ok" was received in reserved time frame, user will fix the issue on mmu unit
 			  if (!mmu_print_saved) { //first occurence, we are saving current position, park print head in certain position and disable nozzle heater
 				  if (lcd_update_enabled) {
@@ -238,6 +339,7 @@ void manage_response(bool move_axes, bool turn_off_nozzle)
 				  }
 			  }
 			  lcd_display_message_fullscreen_P(_i("Check MMU. Fix the issue and then press button on MMU unit."));
+			  delay_keep_alive(1000);
 		  }
 		  else if (mmu_print_saved) {
 			  printf_P(PSTR("MMU start responding\n"));
@@ -306,10 +408,13 @@ void mmu_M600_load_filament(bool automatic)
 		  lcd_print(" ");
 		  lcd_print(tmp_extruder + 1);
 		  snmm_filaments_used |= (1 << tmp_extruder); //for stop print
-		  printf_P(PSTR("T code: %d \n"), tmp_extruder);
-		  mmu_printf_P(PSTR("T%d\n"), tmp_extruder);
+
+//		  printf_P(PSTR("T code: %d \n"), tmp_extruder);
+//		  mmu_printf_P(PSTR("T%d\n"), tmp_extruder);
+		  mmu_command(MMU_CMD_T0 + tmp_extruder);
 
 		  manage_response(false, true);
+		  mmu_command(MMU_CMD_C0);
     	  mmu_extruder = tmp_extruder; //filament change is finished
 
 		  mmu_load_to_nozzle();
@@ -393,8 +498,13 @@ void display_loading()
 void extr_adj(int extruder) //loading filament for SNMM
 {
 #ifndef SNMM
-    printf_P(PSTR("L%d \n"),extruder);
-    fprintf_P(uart2io, PSTR("L%d\n"), extruder);
+    uint8_t cmd = MMU_CMD_L0 + extruder;
+    if (cmd > MMU_CMD_L4)
+    {
+        printf_P(PSTR("Filament out of range %d \n"),extruder);
+        return;
+    }
+    mmu_command(cmd);
 	
 	//show which filament is currently loaded
 	
@@ -404,7 +514,7 @@ void extr_adj(int extruder) //loading filament for SNMM
 	//if(strlen(_T(MSG_LOADING_FILAMENT))>18) lcd.setCursor(0, 1);
 	//else lcd.print(" ");
 	lcd_print(" ");
-	lcd_print(mmu_extruder + 1);
+	lcd_print(extruder + 1);
 
 	// get response
 	manage_response(false, false);
@@ -720,4 +830,15 @@ void extr_unload_4()
 {
 	change_extr(4);
 	extr_unload();
+}
+
+bool mmu_check_version()
+{
+	return (mmu_buildnr >= MMU_REQUIRED_FW_BUILDNR);
+}
+
+void mmu_show_warning()
+{
+	printf_P(PSTR("MMU2 firmware version invalid. Required version: build number %d or higher."), MMU_REQUIRED_FW_BUILDNR);
+	kill(_i("Please update firmware in your MMU2. Waiting for reset."));
 }

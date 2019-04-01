@@ -15,8 +15,8 @@
 #define AMBIENT_THERMISTOR
 #define PINDA_THERMISTOR
 
-#define W25X20CL                 // external 256kB flash
-#define BOOTAPP                  // bootloader support
+//#define W25X20CL                 // external 256kB flash
+//#define BOOTAPP                  // bootloader support
 
 
 #define SWI2C_SDA      20 //SDA on P3

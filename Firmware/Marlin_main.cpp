@@ -1491,7 +1491,8 @@ void setup()
 #ifndef DEBUG_DISABLE_STARTMSGS
   KEEPALIVE_STATE(PAUSED_FOR_USER);
 
-  show_fw_version_warnings();
+  // *** Remove annoying warning - CAUTION ***
+  //show_fw_version_warnings();
 
   switch (hw_changed) { 
 	  //if motherboard or printer type was changed inform user as it can indicate flashing wrong firmware version
@@ -3524,8 +3525,10 @@ void process_commands()
             // careful!
             if (farm_mode) {
 #ifdef WATCHDOG
+#ifdef BOOTAPP
                 boot_app_magic = BOOT_APP_MAGIC;
                 boot_app_flags = BOOT_APP_FLG_RUN;
+#endif
 				wdt_enable(WDTO_15MS);
 				cli();
 				while(1);
@@ -4457,7 +4460,7 @@ if((eSoundMode==e_SOUND_MODE_LOUD)||(eSoundMode==e_SOUND_MODE_ONCE))
 		}
 		#endif // SUPPORT_VERBOSITY
 		int l_feedmultiply = setup_for_endstop_move(false); //save feedrate and feedmultiply, sets feedmultiply to 100
-		const char *kill_message = NULL;
+		//const char *kill_message = NULL;
 		while (mesh_point != nMeasPoints * nMeasPoints) {
 			// Get coords of a measuring point.
 			uint8_t ix = mesh_point % nMeasPoints; // from 0 to MESH_NUM_X_POINTS - 1

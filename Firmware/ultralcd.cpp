@@ -49,7 +49,7 @@ char longFilenameOLD[LONG_FILENAME_LENGTH];
 static void lcd_sd_updir();
 static void lcd_mesh_bed_leveling_settings();
 
-int8_t ReInitLCD = 0;
+//int8_t ReInitLCD = 0;
 
 
 int8_t SilentModeMenu = SILENT_MODE_OFF;
@@ -113,7 +113,9 @@ static const char* lcd_display_message_fullscreen_nonBlocking_P(const char *msg,
 
 /* Different menus */
 static void lcd_status_screen();
+#if (LANG_MODE != 0)
 static void lcd_language_menu();
+#endif
 static void lcd_main_menu();
 static void lcd_tune_menu();
 //static void lcd_move_menu();
@@ -594,7 +596,7 @@ void lcdui_print_extruder(void)
 // Print farm number (5 chars total)
 void lcdui_print_farm(void)
 {
-	int chars = lcd_printf_P(_N(" F0  "));
+	(void)lcd_printf_P(_N(" F0  "));
 //	lcd_space(5 - chars);
 /*
 	// Farm number display
@@ -925,17 +927,7 @@ static void lcd_status_screen()
 
 	if (lcd_draw_update)
 	{
-		ReInitLCD++;
-		if (ReInitLCD == 30)
-		{
-			lcd_refresh(); // to maybe revive the LCD if static electricity killed it.
-			ReInitLCD = 0 ;
-		}
-		else
-		{
-			if ((ReInitLCD % 10) == 0)
-				lcd_refresh_noclear(); //to maybe revive the LCD if static electricity killed it.
-		}
+		// ***Note: Removed lcd reinit from here
 
 		lcdui_print_status_screen();
 
@@ -4856,6 +4848,7 @@ void lcd_wizard() {
 	}
 }
 
+#if (LANG_MODE != 0)
 void lcd_language()
 {
 	lcd_update_enable(true);
@@ -4875,6 +4868,7 @@ void lcd_language()
 	else
 		lang_select(LANG_ID_PRI);
 }
+#endif
 
 static void wait_preheat()
 {

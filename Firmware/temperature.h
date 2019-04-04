@@ -30,8 +30,9 @@
 
 #ifdef SYSTEM_TIMER_2
 
-#define ENABLE_TEMPERATURE_INTERRUPT()  TIMSK2 |= (1<<OCIE2B)
-#define DISABLE_TEMPERATURE_INTERRUPT() TIMSK2 &= ~(1<<OCIE2B)
+extern volatile bool temp_isr_enable;
+#define ENABLE_TEMPERATURE_INTERRUPT()  temp_isr_enable = true;
+#define DISABLE_TEMPERATURE_INTERRUPT() temp_isr_enable = false;
 
 #else //SYSTEM_TIMER_2
 

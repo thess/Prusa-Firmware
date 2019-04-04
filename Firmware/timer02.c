@@ -2,12 +2,12 @@
 // use atmega timer2 as main system timer instead of timer0
 // timer0 is used for fast pwm (OC0B output)
 // original OVF handler is disabled
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include "Arduino.h"
-#include "io_atmega2560.h"
+#include "system_timer.h"
 
-#define BEEPER              84
+#ifdef SYSTEM_TIMER_2
 
 uint8_t timer02_pwm0 = 0;
 
@@ -26,6 +26,9 @@ void timer02_set_pwm0(uint8_t pwm0)
 	}
 	timer02_pwm0 = pwm0;
 }
+
+extern void soft_pwm_isr();
+extern volatile bool in_temp_isr, temp_isr_enable;
 
 void timer02_init(void)
 {
@@ -46,29 +49,30 @@ void timer02_init(void)
 	OCR0B = 0;
 	//disable OCR0B output (will be enabled in timer02_set_pwm0)
 	TCCR0A &= ~(2 << COM0B0);
-	//setup timer2
-	TCCR2A = 0x00; //COM_A-B=00, WGM_0-1=00
-	TCCR2B = (4 << CS20); //WGM_2=0, CS_0-2=011
-	//mask timer2 interrupts - enable OVF, disable others
-	TIMSK2 |= (1<<TOIE2);
-	TIMSK2 &= ~(1<<OCIE2A);
-	TIMSK2 &= ~(1<<OCIE2B);
-	//set timer2 OCR registers (OCRB interrupt generated 0.5ms after OVF interrupt)
-	OCR2A = 0;
-	OCR2B = 128;
+	//setup timer3 CTC
+	TCCR3A = (1 << WGM30); //COM_A-C=00, WGM30=01
+	TCCR3B = (1 << WGM32) | (3 << CS30); //WGM32=01, CS_0-2=011
+	//set timer3 OCRA registers
+	OCR3A = 0;
+	TCNT3 = 0;
+	//mask timer3 interrupts - enable TOV, disable others
+	TIMSK3 = (1 << TOIE3);
+	// Enable temperature pwm int
+	in_temp_isr = false;
+	temp_isr_enable = true;
 	//restore sreg (enable interrupts)
 	SREG = _sreg;
 }
 
 
-//following code is OVF handler for timer 2
-//it is copy-paste from wiring.c and modified for timer2
+//following code is COMPA handler for timer 3
+//it is copy-paste from wiring.c and modified for timer3
 //variables timer0_overflow_count and timer0_millis are declared in wiring.c
 
 
 
-// the prescaler is set so that timer0 ticks every 64 clock cycles, and the
-// the overflow handler is called every 256 ticks.
+// the prescaler is set so that timer3 ticks every 64 clock cycles, and the
+// the compare handler is called every 256 ticks.
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
 
 // the whole number of milliseconds per timer0 overflow
@@ -87,7 +91,7 @@ volatile unsigned long timer2_overflow_count;
 volatile unsigned long timer2_millis;
 unsigned char timer2_fract = 0;
 
-ISR(TIMER2_OVF_vect)
+ISR(TIMER3_OVF_vect)
 {
 	// copy these to local variables so they can be stored in registers
 	// (volatile variables must be read from memory on every access)
@@ -103,6 +107,11 @@ ISR(TIMER2_OVF_vect)
 	timer2_fract = f;
 	timer2_millis = m;
 	timer2_overflow_count++;
+
+	// Temp & fans soft pwm driven by system clock (~1ms)
+	// NOTE: interrupts are (re-)enabled in this routine
+	if (temp_isr_enable)
+		soft_pwm_isr();
 }
 
 unsigned long millis2(void)
@@ -125,20 +134,9 @@ unsigned long micros2(void)
 	uint8_t oldSREG = SREG, t;
 	cli();
 	m = timer2_overflow_count;
-#if defined(TCNT2)
-	t = TCNT2;
-#elif defined(TCNT2L)
-	t = TCNT2L;
-#else
-	#error TIMER 2 not defined
-#endif
-#ifdef TIFR2
-	if ((TIFR2 & _BV(TOV2)) && (t < 255))
+	t = TCNT3L;
+	if ((TIFR3 & _BV(TOV3)) && (t < 255))
 		m++;
-#else
-	if ((TIFR & _BV(TOV2)) && (t < 255))
-		m++;
-#endif
 	SREG = oldSREG;	
 	return ((m << 8) + t) * (64 / clockCyclesPerMicrosecond());
 }
@@ -157,12 +155,4 @@ void delay2(unsigned long ms)
 	}
 }
 
-void tone2(__attribute__((unused)) uint8_t _pin, __attribute__((unused)) unsigned int frequency/*, unsigned long duration*/)
-{
-	PIN_SET(BEEPER);
-}
-
-void noTone2(__attribute__((unused)) uint8_t _pin)
-{
-	PIN_CLR(BEEPER);
-}
+#endif //SYSTEM_TIMER_2

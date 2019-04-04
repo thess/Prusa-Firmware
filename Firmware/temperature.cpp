@@ -1124,13 +1124,11 @@ void tp_init()
 
 #ifdef SYSTEM_TIMER_2
   timer02_init();
-  OCR2B = 128;
-  TIMSK2 |= (1<<OCIE2B);  
 #else //SYSTEM_TIMER_2
   // Use timer0 for temperature measurement
   // Interleave temperature interrupt with millies interrupt
   OCR0B = 128;
-  TIMSK0 |= (1<<OCIE0B);  
+  TIMSK0 |= (1<<OCIE0B);
 #endif //SYSTEM_TIMER_2
 
 
@@ -1611,20 +1609,36 @@ void adc_ready(void) //callback from adc when sampling finished
 } // extern "C"
 
 
-// Timer2 (originaly timer0) is shared with millies
 #ifdef SYSTEM_TIMER_2
-ISR(TIMER2_COMPB_vect)
-#else //SYSTEM_TIMER_2
-ISR(TIMER0_COMPB_vect)
-#endif //SYSTEM_TIMER_2
-{
-	static bool _lock = false;
-	if (_lock) return;
-	_lock = true;
-	asm("sei");
+// recursion/enable locks
+volatile bool in_temp_isr;
+volatile bool temp_isr_enable;
 
-	if (!temp_meas_ready) adc_cycle();
-	lcd_buttons_update();
+// Timer3 (millisecond isr) calls this to re-enable ints
+extern "C" void soft_pwm_isr();
+void soft_pwm_isr()
+{
+  // The stepper ISR can interrupt this ISR. When it does it re-enables this ISR
+  // at the end of its run, potentially causing re-entry. This flag prevents it.
+  if (in_temp_isr) return;
+  in_temp_isr = true;
+#else //SYSTEM_TIMER_2
+// Timer0 is shared with millies
+ISR(TIMER0_COMPB_vect)
+{
+  // The stepper ISR can interrupt this ISR. When it does it re-enables this ISR
+  // at the end of its run, potentially causing re-entry. This flag prevents it.
+  static bool _lock = false;
+  if (_lock) return;
+  _lock = true;
+#endif //SYSTEM_TIMER_2
+
+  // Allow UART and stepper ISRs
+  sei();
+
+  if (!temp_meas_ready)
+	adc_cycle();
+  lcd_buttons_update();
 
   static unsigned char pwm_count = (1 << SOFT_PWM_SCALE);
   static unsigned char soft_pwm_0;
@@ -1969,7 +1983,11 @@ ISR(TIMER0_COMPB_vect)
   check_fans();
 #endif //(defined(TACH_0))
 
-	_lock = false;
+#ifndef SYSTEM_TIMER_2
+  _lock = false;
+#else
+  in_temp_isr = false;
+#endif //SYSTEM_TIMER_2
 }
 
 void check_max_temp()

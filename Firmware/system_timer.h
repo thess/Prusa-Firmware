@@ -11,8 +11,8 @@
 #define _millis millis2
 #define _micros micros2
 #define _delay delay2
-#define _tone tone2
-#define _noTone noTone2
+#define _tone tone
+#define _noTone noTone
 #else //SYSTEM_TIMER_2
 #define _millis millis
 #define _micros micros

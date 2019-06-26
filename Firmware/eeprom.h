@@ -26,15 +26,15 @@
 #define EEPROM_FARM_NUMBER (EEPROM_FARM_MODE-3)
 
 // Correction of the bed leveling, in micrometers.
+#ifdef MBC_8POINT
+// 5 Unused bytes (available for future options)
+#define EEPROM_UNUSED  (EEPROM_FARM_NUMBER-5)
+#define EEPROM_TOSHIBA_FLASH_AIR_COMPATIBLITY (EEPROM_UNUSED-1)
+#else
 // Maximum 50 micrometers allowed.
 // Bed correction is valid if set to 1. If set to zero or 255, the successive 4 bytes are invalid.
-#define EEPROM_BED_CORRECTION_VALID (EEPROM_FARM_NUMBER-1)
-#ifdef MBC_8POINT
-// 4 Unused bytes (available for future options)
-#define EEPROM_UNUSED  (EEPROM_BED_CORRECTION_VALID-1)
-#define EEPROM_TOSHIBA_FLASH_AIR_COMPATIBLITY (EEPROM_UNUSED-4)
-#else
 // Old style MBC offsets
+#define EEPROM_BED_CORRECTION_VALID (EEPROM_FARM_NUMBER-1)
 #define EEPROM_BED_CORRECTION_LEFT  (EEPROM_BED_CORRECTION_VALID-1)
 #define EEPROM_BED_CORRECTION_RIGHT (EEPROM_BED_CORRECTION_LEFT-1)
 #define EEPROM_BED_CORRECTION_FRONT (EEPROM_BED_CORRECTION_RIGHT-1)
@@ -173,12 +173,18 @@
 #define EEPROM_TMC_X_SG_THRS_LOW     (EEPROM_TMC_X + 13) // 1byte, (-64..+63)
 #define EEPROM_TMC_X_SG_THRS_HIGH    (EEPROM_TMC_X + 14) // 1byte, (-64..+63)
 
+#define EEPROM_CUSTOM_BASE	499
+#ifdef MBC_8POINT
 // E^2 address of custom MBC offsets array.
 // Correction of the bed leveling, in micrometers.
 // Current Range is: +/- 500um (stored as int16).
-#define EEPROM_BED_CORRECTION_VALID	499
+#define EEPROM_BED_CORRECTION_VALID	EEPROM_CUSTOM_BASE
 #define EEPROM_BED_CORRECTION_OFFSETS	(EEPROM_BED_CORRECTION_VALID - 16)
-#define EEPROM_XY_CALIBRATION_RESULT	(EEPROM_BED_CORRECTION_OFFSETS - 1)
+#define EEPROM_MBC_DATA			EEPROM_BED_CORRECTION_OFFSETS
+#else
+#define EEPROM_MBC_DATA			(EEPROM_CUSTOM_BASE - 17)
+#endif
+#define EEPROM_XY_CALIBRATION_RESULT	(EEPROM_MBC_DATA - 1)
 #define EEPROM_XY_SKEW_DISABLED		(EEPROM_XY_CALIBRATION_RESULT - 1)
 
 // Currently running firmware, each digit stored as uint16_t.

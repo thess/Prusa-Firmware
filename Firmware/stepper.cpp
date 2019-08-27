@@ -191,6 +191,12 @@ asm volatile ( \
 "r26" , "r27" \
 )
 
+// Some useful constants
+
+#define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
+
+
 void checkHitEndstops()
 {
  if( endstop_x_hit || endstop_y_hit || endstop_z_hit) {
@@ -273,6 +279,11 @@ bool enable_z_endstop(bool check)
 //  step_events_completed reaches block->decelerate_after after which it decelerates until the trapezoid generator is reset.
 //  The slope of acceleration is calculated with the leib ramp alghorithm.
 
+void st_wake_up() {
+  //  TCNT1 = 0;
+  ENABLE_STEPPER_DRIVER_INTERRUPT();
+}
+
 unsigned short calc_timer(unsigned short step_rate) {
   unsigned short timer;
   if(step_rate > MAX_STEP_FREQUENCY) step_rate = MAX_STEP_FREQUENCY;
@@ -340,13 +351,6 @@ ISR(TIMER1_COMPA_vect) {
 }
 
 void isr() {
-  #ifndef LIN_ADVANCE
-    // Disable Timer1 ISRs and enable global ISR again to capture UART events (incoming chars)
-    DISABLE_TEMPERATURE_INTERRUPT(); // Temperature ISR
-    DISABLE_STEPPER_DRIVER_INTERRUPT();
-    sei();
-  #endif
-
   // If there is no current block, attempt to pop one from the buffer
   if (current_block == NULL) {
     // Anything in the buffer?
@@ -365,7 +369,6 @@ void isr() {
         if(current_block->steps_z > 0) {
           enable_z();
           _NEXT_ISR(2000); //1ms wait
-          ENABLE_ISRs();
           return;
         }
       #endif
@@ -573,8 +576,7 @@ void isr() {
 
     for(uint8_t i=0; i < step_loops; i++) { // Take multiple steps per interrupt (For high speed moves)
       #ifndef AT90USB
-      // Not needed - ints are enabled here
-      //MSerial.checkRx(); // Check for serial chars.
+      MSerial.checkRx(); // Check for serial chars.
       #endif
       
       #ifdef LIN_ADVANCE
@@ -720,14 +722,6 @@ void isr() {
       plan_discard_current_block();
     }
   }
-
-  #ifndef LIN_ADVANCE
-    // Don't run the ISR faster than possible
-    if (OCR1A < TCNT1 + 16)
-      OCR1A = TCNT1 + 16;
-
-    ENABLE_ISRs();	// Re-enable ISRs
-  #endif  
 }
 
 #ifdef LIN_ADVANCE
@@ -775,11 +769,6 @@ void isr() {
   }
 
   void advance_isr_scheduler() {
-    // Disable Timer1 ISRs and enable global ISR again to capture UART events (incoming chars)
-    DISABLE_TEMPERATURE_INTERRUPT(); // Temperature ISR
-    DISABLE_STEPPER_DRIVER_INTERRUPT();
-    sei();
-
     // Run main stepping ISR if flagged
     if (!nextMainISR) isr();
 
@@ -806,11 +795,7 @@ void isr() {
     }
 
     // Don't run the ISR faster than possible
-    if (OCR1A < TCNT1 + 16)
-      OCR1A = TCNT1 + 16;
-
-    // Restore original ISR settings
-    ENABLE_ISRs();
+    if (OCR1A < TCNT1 + 16) OCR1A = TCNT1 + 16;
   }
   
   void clear_current_adv_vars() {

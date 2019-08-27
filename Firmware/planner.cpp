@@ -598,7 +598,7 @@ static inline void planner_update_queue_min_counter()
 void planner_abort_hard()
 {
     // Abort the stepper routine and flush the planner queue.
-    DISABLE_STEPPER_DRIVER_INTERRUPT();
+    quickStop();
 
     // Now the front-end (the Marlin_main.cpp with its current_position) is out of sync.
     // First update the planner's current position in the physical motor steps.
@@ -617,10 +617,6 @@ void planner_abort_hard()
     if (mbl.active)
         current_position[Z_AXIS] -= mbl.get_z(current_position[X_AXIS], current_position[Y_AXIS]);
 #endif
-
-    // Clear the planner queue, reset and re-enable the stepper timer
-    quickStop();
-
     // Apply inverse world correction matrix.
     machine2world(current_position[X_AXIS], current_position[Y_AXIS]);
     memcpy(destination, current_position, sizeof(destination));
@@ -1260,10 +1256,7 @@ Having the real displacement of the head, we can calculate the total movement le
 #ifdef PLANNER_DIAGNOSTICS
   planner_update_queue_min_counter();
 #endif /* PLANNER_DIAGNOSTIC */
-
-  // Safe to turn on here
-  // Note: ints only disabled while higher priority thread running - no recursion
-  ENABLE_STEPPER_DRIVER_INTERRUPT();
+  st_wake_up();
 }
 
 #ifdef ENABLE_AUTO_BED_LEVELING
@@ -1288,7 +1281,6 @@ void plan_set_position(float x, float y, float z, const float &e)
 #endif // ENABLE_AUTO_BED_LEVELING
 
     // Apply the machine correction matrix.
-    if (world2machine_correction_mode != WORLD2MACHINE_CORRECTION_NONE)
     {
         float tmpx = x;
         float tmpy = y;
@@ -1299,9 +1291,11 @@ void plan_set_position(float x, float y, float z, const float &e)
   position[X_AXIS] = lround(x*axis_steps_per_unit[X_AXIS]);
   position[Y_AXIS] = lround(y*axis_steps_per_unit[Y_AXIS]);
 #ifdef MESH_BED_LEVELING
-    position[Z_AXIS] = (mbl.active) ? 
-      lround((z + mbl.get_z(x, y)) * axis_steps_per_unit[Z_AXIS]) :
-      lround(z * axis_steps_per_unit[Z_AXIS]);
+    if (mbl.active){
+      position[Z_AXIS] = lround((z+mbl.get_z(x, y))*axis_steps_per_unit[Z_AXIS]);
+    }else{
+        position[Z_AXIS] = lround(z*axis_steps_per_unit[Z_AXIS]);
+    }
 #else
   position[Z_AXIS] = lround(z*axis_steps_per_unit[Z_AXIS]);
 #endif // ENABLE_MESH_BED_LEVELING

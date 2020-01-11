@@ -63,7 +63,8 @@ static void lcd_sd_updir();
 static void lcd_mesh_bed_leveling_settings();
 static void lcd_backlight_menu();
 
-int8_t ReInitLCD = 0;
+// Is this really necessary? Display flashes too often.
+//int8_t ReInitLCD = 0;
 
 
 int8_t SilentModeMenu = SILENT_MODE_OFF;
@@ -981,6 +982,7 @@ void lcd_status_screen()                          // NOT static due to using ins
 
 	if (lcd_draw_update)
 	{
+#if 0
 		ReInitLCD++;
 		if (ReInitLCD == 30)
 		{
@@ -992,7 +994,7 @@ void lcd_status_screen()                          // NOT static due to using ins
 			if ((ReInitLCD % 10) == 0)
 				lcd_refresh_noclear(); //to maybe revive the LCD if static electricity killed it.
 		}
-
+#endif
 		lcdui_print_status_screen();
 
 		if (farm_mode)
@@ -6181,11 +6183,7 @@ static void fil_load_menu()
     MENU_ITEM_FUNCTION_NR_P(_T(MSG_LOAD_FILAMENT), '2', extr_adj, 1); ////MSG_LOAD_FILAMENT_2 c=17
     MENU_ITEM_FUNCTION_NR_P(_T(MSG_LOAD_FILAMENT), '3', extr_adj, 2); ////MSG_LOAD_FILAMENT_3 c=17
     MENU_ITEM_FUNCTION_NR_P(_T(MSG_LOAD_FILAMENT), '4', extr_adj, 3); ////MSG_LOAD_FILAMENT_4 c=17
-
-    if (mmu_enabled)
-    {
-        MENU_ITEM_FUNCTION_NR_P(_T(MSG_LOAD_FILAMENT), '5', extr_adj, 4);
-    }
+    MENU_ITEM_FUNCTION_NR_P(_T(MSG_LOAD_FILAMENT), '5', extr_adj, 4); ////MSG_LOAD_FILAMENT_5 c=17
     MENU_END();
 }
 

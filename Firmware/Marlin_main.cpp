@@ -1565,7 +1565,7 @@ void setup()
 
   if (!farm_mode) {
     check_if_fw_is_on_right_printer();
-    show_fw_version_warnings();    
+    //show_fw_version_warnings();
   }
 
   switch (hw_changed) { 

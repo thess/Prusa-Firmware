@@ -128,8 +128,8 @@ uint8_t pat9125_probe()
 
 uint8_t pat9125_init(void)
 {
-    if (!pat9125_probe())
-        return 0;
+	if (!pat9125_probe())
+		return 0;
 
 	// Verify that the sensor responds with its correct product ID.
 	pat9125_PID1 = pat9125_rd_reg(PAT9125_PID1);

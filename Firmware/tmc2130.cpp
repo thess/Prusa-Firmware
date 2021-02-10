@@ -817,11 +817,12 @@ void tmc2130_do_steps(uint8_t axis, uint16_t steps, uint8_t dir, uint16_t delay_
 {
     if (tmc2130_get_dir(axis) != dir)
         tmc2130_set_dir(axis, dir);
-	while (steps--)
-	{
-		tmc2130_do_step(axis);
-		delayMicroseconds(delay_us);
-	}
+
+    while (steps--)
+    {
+        tmc2130_do_step(axis);
+        delayMicroseconds(delay_us);
+    }
 }
 
 void tmc2130_goto_step(uint8_t axis, uint8_t step, uint8_t dir, uint16_t delay_us, uint16_t microstep_resolution)
@@ -839,7 +840,7 @@ void tmc2130_goto_step(uint8_t axis, uint8_t step, uint8_t dir, uint16_t delay_u
 			dir ^= 1;
 			steps = cnt - steps; // This can create a negative step value
 		}
-        if (steps < 0)
+	        if (steps < 0)
 		{
 			dir ^= 1;
 			steps = -steps;

@@ -11280,7 +11280,7 @@ void restore_print_from_eeprom(bool mbl_was_active) {
 		}
 		dir_name[8] = '\0';
 		MYSERIAL.println(dir_name);
-		// strcpy(dir_names[i], dir_name);
+		// strcpy(card.dir_names[i], dir_name);
 		card.chdir(dir_name, false);
 	}
 

@@ -326,7 +326,7 @@ bool bSettings;                                   // flag (i.e. 'fake parameter'
 
 const char STR_SEPARATOR[] PROGMEM = "------------";
 
-static void lcd_implementation_drawmenu_sdfile(uint8_t row, const char* longFilename)
+static void lcd_implementation_drawmenu_sdfile(uint8_t row, char* longFilename)
 {
     char c;
     uint8_t n = LCD_WIDTH - 1;
@@ -384,7 +384,7 @@ uint8_t menu_item_sddir(char* str_fn, char* str_fnl)
 	return 0;
 }
 
-static uint8_t menu_item_sdfile(const char* str_fn, char* str_fnl)
+static uint8_t menu_item_sdfile(char* str_fn, char* str_fnl)
 {
 	if (menu_item == menu_line)
 	{
